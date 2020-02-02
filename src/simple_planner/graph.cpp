@@ -8,7 +8,7 @@ struct State
     friend bool operator<(const State &lhs, const State &rhs)
     {
         // TODO here
-        return - lhs.g + lhs.path.size() * 10 < - rhs.g + rhs.path.size() * 10;
+        return -lhs.g + lhs.path.size() * 10 < -rhs.g + rhs.path.size() * 10;
     }
 };
 class Graph
@@ -29,22 +29,28 @@ public:
     {
         return sqrt(p2(x1 - x2) + p2(y1 - y2));
     }
-    void calc(State start)
+    State calc(State start)
     {
         std::priority_queue<State> que;
         que.push(start);
+        State best;
+        best.g = 1e6;
+        int cnt = 0;
         while (que.size())
         {
-            const State &s = que.top();
+            const State s = que.top();
             que.pop();
 
-            if (que.size() > 1000)
-                break;
-
-            
             if (s.path.size() >= 36)
             {
-                break;
+                // printf("Gocha\n");
+                // printf("%d %.2f\n", que.size(), s.g);
+                if (s.g < best.g)
+                {
+                    best = s;
+                }
+                if (++cnt > 100)
+                    return best;
             }
 
             for (size_t i = 1; i <= 72; i++)
@@ -60,13 +66,11 @@ public:
                     s2.g = s.g + dist(x1, y1, s.x, s.y);
                     s2.path = s.path;
                     s2.path.push_back(i);
-                    printf("Begin State (%.2f, %.2f) %d %f, Queue size: %d\n", s.x, s.y, s.path.size(), s.g, que.size());
                     que.push(s2);
-                    printf("End State (%.2f, %.2f) %d %f, Queue size: %d\n", s.x, s.y, s.path.size(), s.g, que.size());
                 }
             }
-            
         }
+        return best;
     }
 
     // get the number of a point from row, col and type
@@ -130,7 +134,12 @@ int mat2[] = {
 int main(int argc, char const *argv[])
 {
     Graph graph(mat, mat2);
-    State s;
-    graph.calc(s);
+    State best = graph.calc(State());
+    printf("dist %.2f\n", best.g);
+    for (size_t i = 0; i < 36; i++)
+    {
+        printf("%d ", best.path[i]);
+    }
+    
     return 0;
 }
