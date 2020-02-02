@@ -41,7 +41,7 @@ public:
             if (que.size() > 1000)
                 break;
 
-            printf("Begin State (%f, %f) %d %f\nQueue size: %d\n", s.x, s.y, s.path.size(), s.g, que.size());
+            
             if (s.path.size() >= 36)
             {
                 break;
@@ -60,10 +60,12 @@ public:
                     s2.g = s.g + dist(x1, y1, s.x, s.y);
                     s2.path = s.path;
                     s2.path.push_back(i);
+                    printf("Begin State (%.2f, %.2f) %d %f, Queue size: %d\n", s.x, s.y, s.path.size(), s.g, que.size());
                     que.push(s2);
+                    printf("End State (%.2f, %.2f) %d %f, Queue size: %d\n", s.x, s.y, s.path.size(), s.g, que.size());
                 }
             }
-            printf("End State (%f, %f) %d %f\nQueue size: %d\n", s.x, s.y, s.path.size(), s.g, que.size());
+            
         }
     }
 
