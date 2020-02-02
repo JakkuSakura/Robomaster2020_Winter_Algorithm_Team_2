@@ -12,10 +12,11 @@
   <!-- Run the Fake TF publisher from map to odom -->
   <node pkg="tf2_ros" type="static_transform_publisher" name="map2odom"
         args="0.5 0.5 0.0  1.57  0.0 0.0 map odom" />
-  <!-- Run the planning nodes -->
-  <include file="$(find simple_bringup)/launch/planner.launch" />
 
   <!-- Run the rviz -->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find simple_bringup)/rviz/winter_camp.rviz" />
+  <!-- Run the planning nodes -->
+  <include file="$(find simple_bringup)/launch/planner.launch" />
+
 </launch>
  
