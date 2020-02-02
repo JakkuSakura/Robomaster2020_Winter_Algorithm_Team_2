@@ -38,10 +38,10 @@ int mat[] = {
     31, 32, 33, 34, 35, 36};
 int mat2[] = {
     1, 2, 3, 4, 5, 6,
-    7, 8, 9, 10, 11, 12,
+    25, 26, 27, 28, 29, 30,
     13, 14, 15, 16, 17, 18,
     19, 20, 21, 22, 23, 24,
-    25, 26, 27, 28, 29, 30,
+    7, 8, 9, 10, 11, 12,
     31, 32, 33, 34, 35, 36};
 
 namespace robomaster
@@ -108,8 +108,8 @@ public:
           s2.visited = s.visited;
           s2.visited[(i - 1) % 36 + 1] = 1;
           float x1, y1;
-          lookup((i - 1) % 36 + 1, i > 36 ? 1 : 2, x1, y1);     // original location
-          lookup((i - 1) % 36 + 1, i > 36 ? 2 : 1, s2.x, s2.y); // teleport
+          lookup((i - 1) % 36 + 1, i <= 36 ? 1 : 2, x1, y1);     // original location
+          lookup((i - 1) % 36 + 1, i <= 36 ? 2 : 1, s2.x, s2.y); // teleport
           s2.g = s.g + dist(x1, y1, s.x, s.y);
           s2.path = s.path;
           s2.path.push_back(i);
@@ -179,13 +179,12 @@ public:
     // -------------------visulize endpoints and trajectory---------------------
     tf_listener_ = std::make_shared<tf::TransformListener>();
 
-    setpoint_pub_ = nh.advertise<visualization_msgs::Marker>("set_point", 10);
-    global_path_pub_ = nh.advertise<nav_msgs::Path>("path", 10);
+    setpoint_pub_ = nh.advertise<visualization_msgs::Marker>("set_point", 100);
+    global_path_pub_ = nh.advertise<nav_msgs::Path>("path", 100);
 
     init_map();
 
     Plan();
-
   }
   ~GlobalPlanner() = default;
 
@@ -201,14 +200,25 @@ private:
     for (size_t i = 0; i < 36; i++)
     {
 
-      geometry_msgs::PoseStamped pose;
-      pose.header.stamp = ros::Time::now();
-      pose.header.frame_id = global_frame_;
-      float x, y;
-      graph.lookup((best.path[i] - 1) % 36 + 1, best.path[i] <= 36 ? 1 : 2, x, y);
-      pose.pose.position.x = x, pose.pose.position.y = y;
+      {
+        geometry_msgs::PoseStamped pose;
+        pose.header.stamp = ros::Time::now();
+        pose.header.frame_id = global_frame_;
+        float x, y;
+        graph.lookup((best.path[i] - 1) % 36 + 1, best.path[i] <= 36 ? 1 : 2, x, y);
+        pose.pose.position.x = x, pose.pose.position.y = y;
+        path.poses.push_back(pose);
+      }
 
-      path.poses.push_back(pose);
+      {
+        geometry_msgs::PoseStamped pose;
+        pose.header.stamp = ros::Time::now();
+        pose.header.frame_id = global_frame_;
+        float x, y;
+        graph.lookup((best.path[i] - 1) % 36 + 1, best.path[i] > 36 ? 1 : 2, x, y);
+        pose.pose.position.x = x, pose.pose.position.y = y;
+        path.poses.push_back(pose);
+      }
     }
 
     global_path_pub_.publish(path);
@@ -253,7 +263,7 @@ private:
     p.lifetime = ros::Duration(2000.0);
 
     setpoint_pub_.publish(p);
-    ros::Duration(0.2).sleep();
+    ros::Duration(0.002).sleep();
   }
 
 private:
