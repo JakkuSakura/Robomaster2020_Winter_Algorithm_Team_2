@@ -4,7 +4,7 @@
     <node pkg="simple_planner" type="global_planner" name="global_planner" respawn="true" output="screen" >
         <param name="global_frame" value="map"/>
         <param name="plan_frequency" value="50"/>
-        <param name="point_num" value="10"/>
+        <!--<param name="point_num" value="2"/>-->
         <param name="waypoint_distance" value="0.3"/>
     </node>
 
@@ -12,7 +12,7 @@
     <node pkg="simple_planner" type="local_planner" name="local_planner" respawn="true" output="screen" >
         <param name="global_frame" value="odom"/>
         <param name="plan_frequency" value="50"/>
-        <param name="max_speed" value="1.5"/>
+        <param name="max_speed" value="2"/>
         <param name="max_angle_diff" value="60"/>
         <param name="p_coeff" value="2"/>
         <param name="goal_tolerance" value="0.1"/>
@@ -21,8 +21,8 @@
 
     <!-- Run the pid controller for goal position and angle -->
         <node pkg="simple_planner" type="pid_planner" name="pid_planner" respawn="true" output="screen" >
-        <param name="max_x_speed" value="1.5"/>
-        <param name="max_y_speed" value="1.5"/>
+        <param name="max_x_speed" value="2"/>
+        <param name="max_y_speed" value="2"/>
         <param name="max_yaw_speed" value="3.0"/>
         <param name="p_x_coeff" value="2"/>
         <param name="p_y_coeff" value="2"/>
