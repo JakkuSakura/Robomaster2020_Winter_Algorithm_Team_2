@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package format="2">
+    <name>simple_bringup</name>
+    <version>0.1.0</version>
+    <description>A bringup ROS package for RoboMaster 2019 Summer Camp </description>
+    <maintainer email="charles.yang@dji.com">Charles Yang</maintainer>
+    <license>BSD</license>
+    <url type="website">https://github.com/robomaster</url>
+    <author email="charles.yang@dji.com">Charles Yang</author>
+
+    <buildtool_depend>catkin</buildtool_depend>
+</package>
