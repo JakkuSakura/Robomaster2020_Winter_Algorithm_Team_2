@@ -66,8 +66,8 @@ floorplan
 ( 
   name "RoboMaster Map"
   bitmap "./winter_camp.pgm"
-  size [10.00 10.00 1.000]
-  pose [3.00 3.00 0.000 0.00 ]
+  size [13 13.00 1.000]
+  pose [6.50 6.50 0.000 0.00 ]
 )
 
 # throw in a robot

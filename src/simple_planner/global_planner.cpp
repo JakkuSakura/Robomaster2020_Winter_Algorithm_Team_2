@@ -172,8 +172,8 @@ public:
     int row = ans / 6;
     int col = ans % 6;
 
-    y = row + (type == 1 ? 0.25 : 0.75);
-    x = col + (type == 1 ? 0.25 : 0.75);
+    y = row * 2 + (type == 1 ? 1 : 2);
+    x = col * 2 + (type == 1 ? 1 : 2);
   }
 };
 
@@ -241,8 +241,8 @@ private:
     {
       for (size_t j = 0; j < 6; j++)
       {
-        mark_point(i + 0.25, j + 0.25, 0, visualization_msgs::Marker::SPHERE);
-        mark_point(i + 0.75, j + 0.75, 0, visualization_msgs::Marker::CUBE);
+        mark_point(i * 2 + 1, j * 2 + 1, 0, visualization_msgs::Marker::SPHERE);
+        mark_point(i * 2 + 2, j * 2 + 2, 0, visualization_msgs::Marker::CUBE);
       }
     }
   }
