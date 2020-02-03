@@ -245,6 +245,14 @@ private:
         mark_point(i * 2 + 2, j * 2 + 2, 0, visualization_msgs::Marker::CUBE);
       }
     }
+    for (size_t i = 0; i < 6; i++)
+    {
+      for (size_t j = 0; j < 6; j++)
+      {
+        mark_point(i * 2 + 1, j * 2 + 1, 0, visualization_msgs::Marker::SPHERE);
+        mark_point(i * 2 + 2, j * 2 + 2, 0, visualization_msgs::Marker::CUBE);
+      }
+    }
   }
 
   void mark_point(float x, float y, float z, int shape)
@@ -273,7 +281,7 @@ private:
     p.lifetime = ros::Duration(2000.0);
 
     setpoint_pub_.publish(p);
-    ros::Duration(0.002).sleep();
+    ros::Duration(0.001).sleep();
   }
 
 private:
@@ -300,7 +308,7 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "global_planner");
   ros::NodeHandle nh("~");
-  // ros::Duration(5).sleep();
+  // ros::Duration(10).sleep();
   GlobalPlanner global_planner(nh);
   ros::spin();
   return 0;
