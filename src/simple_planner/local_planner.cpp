@@ -188,8 +188,8 @@ private:
     // update prune_index when arriving at a certain point
     void NextPose(geometry_msgs::PoseStamped &robot_pose, nav_msgs::Path &path, int &prune_index, double prune_ahead_dist)
     {
-        double sq_dist = GetEuclideanDistance(robot_pose, path.poses[prune_index]);
-        if(sq_dist <= prune_ahead_dist * prune_ahead_dist)
+        double dist = GetEuclideanDistance(robot_pose, path.poses[prune_index]);
+        if(dist <= prune_ahead_dist)
         {
             prune_index += 1;
         }
