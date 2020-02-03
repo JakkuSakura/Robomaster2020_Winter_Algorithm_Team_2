@@ -50,6 +50,7 @@ struct State
 {
   std::bitset<64> visited;
   float x = 0, y = 0;
+  float orientation = 0;
   float g = 0;
   std::vector<int> path;
   friend bool operator<(const State &lhs, const State &rhs)
@@ -76,6 +77,16 @@ public:
   {
     return sqrt(p2(x1 - x2) + p2(y1 - y2));
   }
+
+  float distance_in_degree(float alpha, float beta)
+  {
+    float phi = abs(beta - alpha);
+    while (phi > 360)
+      phi -= 360;
+    float distance = phi > 180 ? 360 - phi : phi;
+    return distance;
+  }
+
   State calc(State start)
   {
     std::priority_queue<State> que;
@@ -90,8 +101,6 @@ public:
 
       if (s.path.size() >= 36)
       {
-        // printf("Gocha\n");
-        // printf("%d %.2f\n", que.size(), s.g);
         if (s.g < best.g)
         {
           best = s;
@@ -110,7 +119,10 @@ public:
           float x1, y1;
           lookup((i - 1) % 36 + 1, i <= 36 ? 1 : 2, x1, y1);     // original location
           lookup((i - 1) % 36 + 1, i <= 36 ? 2 : 1, s2.x, s2.y); // teleport
-          s2.g = s.g + dist(x1, y1, s.x, s.y);
+          // TODO test this part
+          float degree = atan2f(y1 - s.y, x1 - s.x) * 180 / M_PI;
+          s2.orientation = atan2f(y1 - s2.y, x1 - s2.y) * 180 / M_PI;
+          s2.g = s.g + dist(x1, y1, s.x, s.y) + distance_in_degree(s.orientation, degree) / 360.0 * 10 + distance_in_degree(degree, s2.orientation) / 360.0 * 10;
           s2.path = s.path;
           s2.path.push_back(i);
           que.push(s2);
