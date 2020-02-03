@@ -18,7 +18,7 @@ define rplidar ranger
 
 define robot position
 (
-  size [0.600 0.450 0.460]
+  size [0.0100 0.0100 0.0100]
   origin [0.000 0.000 0.000 0.000]
   gui_nose 1
   drive "omni"

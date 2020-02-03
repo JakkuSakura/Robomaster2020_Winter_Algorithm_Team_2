@@ -183,10 +183,8 @@ public:
   GlobalPlanner(ros::NodeHandle &given_nh) : nh(given_nh)
   {
 
-    // nh.param<int>("point_num", point_num_, 10);
     nh.param<int>("plan_frequency", plan_freq_, 50);
     nh.param<std::string>("global_frame", global_frame_, "map");
-    // nh.param<double>("waypoint_distance", waypoint_dist_, 0.4);
 
     // -------------------visulize endpoints and trajectory---------------------
     tf_listener_ = std::make_shared<tf::TransformListener>();
@@ -243,8 +241,8 @@ private:
     {
       for (size_t j = 0; j < 6; j++)
       {
-        mark_point(i + 0.25, j + 0.25, 0.3, visualization_msgs::Marker::SPHERE);
-        mark_point(i + 0.75, j + 0.75, 0.3, visualization_msgs::Marker::CUBE);
+        mark_point(i + 0.25, j + 0.25, 0, visualization_msgs::Marker::SPHERE);
+        mark_point(i + 0.75, j + 0.75, 0, visualization_msgs::Marker::CUBE);
       }
     }
   }
@@ -267,7 +265,7 @@ private:
     p.pose.orientation.y = 0;
     p.pose.orientation.z = 0;
 
-    p.scale.x = p.scale.y = p.scale.z = 0.2;
+    p.scale.x = p.scale.y = p.scale.z = 0.1;
 
     p.color.a = p.color.r = 1.0;
     p.color.g = p.color.b = 0.0;
