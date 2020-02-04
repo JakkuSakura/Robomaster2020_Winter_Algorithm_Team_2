@@ -17,7 +17,7 @@
 
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
-
+#include <std_msgs/Int16MultiArray.h>
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <visualization_msgs/Marker.h>
@@ -28,21 +28,6 @@
 #include <cmath>
 #include "utility.h"
 #include <bitset>
-
-int mat[] = {
-    1, 2, 3, 4, 5, 6,
-    7, 8, 9, 10, 11, 12,
-    13, 14, 15, 16, 17, 18,
-    19, 20, 21, 22, 23, 24,
-    25, 26, 27, 28, 29, 30,
-    31, 32, 33, 34, 35, 36};
-int mat2[] = {
-    1, 2, 3, 4, 5, 6,
-    25, 26, 27, 28, 29, 30,
-    13, 14, 15, 16, 17, 18,
-    19, 20, 21, 22, 23, 24,
-    7, 8, 9, 10, 11, 12,
-    31, 32, 33, 34, 35, 36};
 
 namespace robomaster
 {
@@ -61,10 +46,10 @@ struct State
 };
 class Graph
 {
-  int *id1_, *id2_;
+  const int *id1_, *id2_;
 
 public:
-  Graph(int *id1, int *id2)
+  Graph(const int *id1, const int *id2)
   {
     id1_ = id1;
     id2_ = id2;
@@ -109,16 +94,16 @@ public:
           return best;
       }
 
-      for (size_t i = 1; i <= 72; i++)
+      for (size_t i = 0; i < 72; i++)
       {
-        if (!s.visited[(i - 1) % 36 + 1])
+        if (!s.visited[i % 36])
         {
           State s2;
           s2.visited = s.visited;
-          s2.visited[(i - 1) % 36 + 1] = 1;
+          s2.visited[i % 36] = 1;
           float x1, y1;
-          lookup((i - 1) % 36 + 1, i <= 36 ? 1 : 2, x1, y1);     // original location
-          lookup((i - 1) % 36 + 1, i <= 36 ? 2 : 1, s2.x, s2.y); // teleport
+          lookup(i, x1, y1);           // original location
+          lookup(pair(i), s2.x, s2.y); // teleport
           // TODO test this part
           float degree = atan2f(y1 - s.y, x1 - s.x) * 180 / M_PI;
           s2.orientation = atan2f(y1 - s2.y, x1 - s2.y) * 180 / M_PI;
@@ -131,28 +116,25 @@ public:
     }
     return best;
   }
-
-  // get the number of a point from row, col and type
-  int get_id(int row, int col, int type)
+  int pair(int x)
   {
+    if (x < 36)
+    {
+      return x + 36;
+    }
+    else
+    {
+      return x - 36;
+    }
+  }
+  // get the location from id and type
+  void lookup(int id, float &x, float &y)
+  {
+    int type = id < 36 ? 1 : 2;
+    int ans = 0;
     if (type == 1)
     {
-      return id1_[(row - 1) * 6 + col];
-    }
-    else // if (type == 2)
-    {
-      return id2_[(row - 1) * 6 + col];
-    }
-    // return 0;
-  }
-
-  // get the location from id and type
-  void lookup(int id, int type, float &x, float &y)
-  {
-    int ans = 0;
-    for (size_t i = 0; i < 36; i++)
-    {
-      if (type == 1)
+      for (size_t i = 0; i < 36; i++)
       {
         if (id1_[i] == id)
         {
@@ -160,30 +142,32 @@ public:
           break;
         }
       }
-      else
+    }
+    else
+    {
+      for (size_t i = 0; i < 36; i++)
       {
-        if (id2_[i] == id)
+        if (id2_[i] == id - 36)
         {
           ans = i;
           break;
         }
       }
     }
+
     int row = ans / 6;
     int col = ans % 6;
 
-    y = row * 2 + (type == 1 ? 1 : 2);
-    x = col * 2 + (type == 1 ? 1 : 2);
+    y = row * 2 + type;
+    x = col * 2 + type;
   }
 };
-
 class GlobalPlanner
 {
 public:
   GlobalPlanner(ros::NodeHandle &given_nh) : nh(given_nh)
   {
 
-    nh.param<int>("plan_frequency", plan_freq_, 50);
     nh.param<std::string>("global_frame", global_frame_, "map");
 
     // -------------------visulize endpoints and trajectory---------------------
@@ -191,22 +175,41 @@ public:
 
     setpoint_pub_ = nh.advertise<visualization_msgs::Marker>("set_point", 100);
     global_path_pub_ = nh.advertise<nav_msgs::Path>("path", 100);
-
-    init_map();
-
-    Plan();
+    point_mat_fetcher_ = nh.subscribe("/random_points", 1, &GlobalPlanner::fetch_numbers, this);
   }
   ~GlobalPlanner() = default;
 
 private:
-  void Plan()
+  void fetch_numbers(const std_msgs::Int16MultiArray &points)
   {
-    Graph graph(mat, mat2);
+    if (planned)
+      return;
+
+    int mat1[36], mat2[36];
+    for (size_t i = 0; i < 36; i++)
+    {
+      mat1[i] = i;
+      mat2[i] = points.data[i];
+    }
+    Plan(mat1, mat2);
+    planned = true;
+    ROS_INFO("Planned global path");
+  }
+  void Plan(const int *mat1, const int *mat2)
+  {
+    Graph graph(mat1, mat2);
     State best = graph.calc(State());
     nav_msgs::Path path;
 
     path.header.stamp = ros::Time::now();
     path.header.frame_id = global_frame_;
+    std::cout << "Calculated path: ";
+    for (size_t i = 0; i < 36; i++)
+    {
+      std::cout << best.path[i] << " ";
+    }
+    std::cout << std::endl;
+
     for (size_t i = 0; i < 36; i++)
     {
 
@@ -215,7 +218,7 @@ private:
         pose.header.stamp = ros::Time::now();
         pose.header.frame_id = global_frame_;
         float x, y;
-        graph.lookup((best.path[i] - 1) % 36 + 1, best.path[i] <= 36 ? 1 : 2, x, y);
+        graph.lookup(best.path[i], x, y);
         pose.pose.position.x = x, pose.pose.position.y = y;
         path.poses.push_back(pose);
       }
@@ -224,8 +227,9 @@ private:
         geometry_msgs::PoseStamped pose;
         pose.header.stamp = ros::Time::now();
         pose.header.frame_id = global_frame_;
+
         float x, y;
-        graph.lookup((best.path[i] - 1) % 36 + 1, best.path[i] > 36 ? 1 : 2, x, y);
+        graph.lookup(graph.pair(best.path[i]), x, y);
         pose.pose.position.x = x, pose.pose.position.y = y;
         path.poses.push_back(pose);
       }
@@ -234,72 +238,15 @@ private:
     global_path_pub_.publish(path);
   }
 
-  void init_map()
-  {
-    // FIXME the first a few markers does not show
-    for (size_t i = 0; i < 6; i++)
-    {
-      for (size_t j = 0; j < 6; j++)
-      {
-        mark_point(i * 2 + 1, j * 2 + 1, 0, visualization_msgs::Marker::SPHERE);
-        mark_point(i * 2 + 2, j * 2 + 2, 0, visualization_msgs::Marker::CUBE);
-      }
-    }
-    for (size_t i = 0; i < 6; i++)
-    {
-      for (size_t j = 0; j < 6; j++)
-      {
-        mark_point(i * 2 + 1, j * 2 + 1, 0, visualization_msgs::Marker::SPHERE);
-        mark_point(i * 2 + 2, j * 2 + 2, 0, visualization_msgs::Marker::CUBE);
-      }
-    }
-  }
-
-  void mark_point(float x, float y, float z, int shape)
-  {
-    visualization_msgs::Marker p;
-    p.header.frame_id = global_frame_;
-    p.header.stamp = ros::Time::now();
-    p.id = rand();
-
-    p.type = shape;
-    p.action = visualization_msgs::Marker::ADD;
-
-    p.pose.position.x = x;
-    p.pose.position.y = y;
-    p.pose.position.z = z;
-    p.pose.orientation.w = 1;
-    p.pose.orientation.x = 0;
-    p.pose.orientation.y = 0;
-    p.pose.orientation.z = 0;
-
-    p.scale.x = p.scale.y = p.scale.z = 0.1;
-
-    p.color.a = p.color.r = 1.0;
-    p.color.g = p.color.b = 0.0;
-
-    p.lifetime = ros::Duration(2000.0);
-
-    setpoint_pub_.publish(p);
-    ros::Duration(0.001).sleep();
-  }
-
 private:
   ros::NodeHandle nh;
   std::shared_ptr<tf::TransformListener> tf_listener_;
   std::string global_frame_;
-  // ros::Timer plan_timer_;
-
   ros::Publisher global_path_pub_;
   ros::Publisher setpoint_pub_;
 
-  ros::Subscriber waypoint_sub_;
-  ros::Subscriber record_sub_;
-
-  ros::Timer record_timer_;
-
-  int point_num_;
-  int plan_freq_;
+  ros::Subscriber point_mat_fetcher_;
+  bool planned = false;
 };
 } // namespace robomaster
 
@@ -308,7 +255,7 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "global_planner");
   ros::NodeHandle nh("~");
-  // ros::Duration(10).sleep();
+  ros::Duration(5).sleep();
   GlobalPlanner global_planner(nh);
   ros::spin();
   return 0;

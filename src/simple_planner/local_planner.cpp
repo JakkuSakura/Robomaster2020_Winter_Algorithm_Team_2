@@ -128,10 +128,10 @@ private:
             cmd_vel_pub_.publish(cmd_vel);
 
             auto plan_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - begin);
-            ROS_INFO("Planning takes %f ms and passed %d/%d.",
-                     plan_time.count() / 1000.,
-                     prune_index_,
-                     static_cast<int>(global_path_.poses.size()));
+            // ROS_INFO("Planning takes %f ms and passed %d/%d.",
+            //          plan_time.count() / 1000.,
+            //          prune_index_,
+            //          static_cast<int>(global_path_.poses.size()));
         }
     }
 
