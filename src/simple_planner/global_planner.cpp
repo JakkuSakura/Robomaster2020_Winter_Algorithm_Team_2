@@ -28,141 +28,12 @@
 #include <cmath>
 #include "utility.h"
 #include <bitset>
-
+#include <algorithm>
+#include "graph.h"
+#include "calculators/a_star.h"
 namespace robomaster
 {
-float p2(float x)
-{
-  return x * x;
-}
-float dist(float x1, float y1, float x2, float y2)
-{
-  return sqrt(p2(x1 - x2) + p2(y1 - y2));
-}
 
-float distance_in_degree(float alpha, float beta)
-{
-  float phi = abs(beta - alpha);
-  while (phi > 360)
-    phi -= 360;
-  float distance = phi > 180 ? 360 - phi : phi;
-  return distance;
-}
-
-struct State
-{
-  std::bitset<64> visited;
-  float x = 0, y = 0;
-  float orientation = 0;
-  float g = 0;
-  std::vector<int> path;
-  friend bool operator<(const State &lhs, const State &rhs)
-  {
-    // TODO here
-    return -lhs.g + lhs.path.size() * 100 < -rhs.g + rhs.path.size() * 100;
-  }
-};
-class Graph
-{
-  const int *id1_, *id2_;
-
-public:
-  Graph(const int *id1, const int *id2)
-  {
-    id1_ = id1;
-    id2_ = id2;
-  }
-
-  State calc(State start)
-  {
-    std::priority_queue<State> que;
-    que.push(start);
-    State best;
-    best.g = 1e6;
-    int cnt = 0;
-    while (que.size())
-    {
-      const State s = que.top();
-      que.pop();
-
-      if (s.path.size() >= 36)
-      {
-        if (s.g < best.g)
-        {
-          best = s;
-        }
-        if (++cnt > 200)
-          return best;
-      }
-
-      for (size_t i = 0; i < 36; i++)
-      {
-        if (!s.visited[i % 36])
-        {
-          State s2;
-          s2.visited = s.visited;
-          s2.visited[i % 36] = 1;
-          float x1, y1;
-          lookup(i, x1, y1);           // original location
-          lookup(pair(i), s2.x, s2.y); // teleport
-          // TODO test this part
-          float degree = atan2f(y1 - s.y, x1 - s.x) * 180 / M_PI;
-          s2.orientation = atan2f(y1 - s2.y, x1 - s2.y) * 180 / M_PI;
-          s2.g = s.g + 10 * pow(dist(x1, y1, s.x, s.y), 1.7) + distance_in_degree(s.orientation, degree) / 360.0 * 10 + distance_in_degree(degree, s2.orientation) / 360.0 * 10;
-          s2.path = s.path;
-          s2.path.push_back(i);
-          que.push(s2);
-        }
-      }
-    }
-    return best;
-  }
-  int pair(int x)
-  {
-    if (x < 36)
-    {
-      return x + 36;
-    }
-    else
-    {
-      return x - 36;
-    }
-  }
-  // get the location from id and type
-  void lookup(int id, float &x, float &y)
-  {
-    int type = id < 36 ? 1 : 2;
-    int ans = 0;
-    if (type == 1)
-    {
-      for (size_t i = 0; i < 36; i++)
-      {
-        if (id1_[i] == id)
-        {
-          ans = i;
-          break;
-        }
-      }
-    }
-    else
-    {
-      for (size_t i = 0; i < 36; i++)
-      {
-        if (id2_[i] == id - 36)
-        {
-          ans = i;
-          break;
-        }
-      }
-    }
-
-    int row = ans / 6;
-    int col = ans % 6;
-
-    y = row * 2 + type;
-    x = col * 2 + type;
-  }
-};
 class GlobalPlanner
 {
 public:
@@ -198,19 +69,16 @@ private:
   }
   void Plan(const int *mat1, const int *mat2)
   {
-    Graph graph(mat1, mat2);
-    State s;
-    s.path.push_back(0);
-    s.visited[0] = 1;
-    State best = graph.calc(s);
+    std::vector<int> best = calculator(mat1, mat2);
     nav_msgs::Path path;
 
     path.header.stamp = ros::Time::now();
     path.header.frame_id = global_frame_;
+
     std::cout << "Calculated path: ";
     for (size_t i = 0; i < 36; i++)
     {
-      std::cout << best.path[i] << " ";
+      std::cout << best[i] << " ";
     }
     std::cout << std::endl;
 
@@ -222,7 +90,7 @@ private:
         pose.header.stamp = ros::Time::now();
         pose.header.frame_id = global_frame_;
         float x, y;
-        graph.lookup(best.path[i], x, y);
+        lookup(mat1, mat2, best[i], x, y);
         pose.pose.position.x = y, pose.pose.position.y = x;
         path.poses.push_back(pose);
       }
@@ -233,7 +101,7 @@ private:
         pose.header.frame_id = global_frame_;
 
         float x, y;
-        graph.lookup(graph.pair(best.path[i]), x, y);
+        lookup(mat1, mat2, pair(best[i]), x, y);
         pose.pose.position.x = y, pose.pose.position.y = x;
         path.poses.push_back(pose);
       }
@@ -251,6 +119,7 @@ private:
 
   ros::Subscriber point_mat_fetcher_;
   bool planned = false;
+  calculate_path calculator = calculate_path_a_star;
 };
 } // namespace robomaster
 
