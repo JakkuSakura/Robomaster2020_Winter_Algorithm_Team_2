@@ -19,6 +19,7 @@
   <include file="$(find simple_bringup)/launch/planner.launch" />
 
   <!-- Run the rviz -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find simple_bringup)/rviz/winter_camp.rviz" />
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find simple_bringup)/rviz/winter_camp.rviz" if="$(eval arg('distro') =='melodic')"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find simple_bringup)/rviz/winter_camp_kinetic.rviz" unless="$(eval arg('distro') =='melodic')"/>
 </launch>
  

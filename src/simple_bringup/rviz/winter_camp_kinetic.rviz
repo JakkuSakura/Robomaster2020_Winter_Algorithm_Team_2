@@ -56,8 +56,8 @@ Visualization Manager:
       Name: Grid
       Normal Cell Count: 0
       Offset:
-        X: 6.5
-        Y: 6.5
+        X: 6.0
+        Y: -6.0
         Z: 0
       Plane: XY
       Plane Cell Count: 13

@@ -35,8 +35,8 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "random_point");
     ros::NodeHandle nh;
-    ros::Publisher random_pub = nh.advertise<std_msgs::Int16MultiArray>("random_points",5);
-    ros::Publisher number_pub = nh.advertise<visualization_msgs::MarkerArray>("number", 10);
+    ros::Publisher random_pub = nh.advertise<std_msgs::Int16MultiArray>("blue_numbers",5);
+    ros::Publisher number_pub = nh.advertise<visualization_msgs::MarkerArray>("number_markers", 10);
     //random points
     std_msgs::Int16MultiArray points;
     points.data.reserve(36);

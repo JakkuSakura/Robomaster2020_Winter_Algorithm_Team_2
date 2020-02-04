@@ -6,7 +6,7 @@ define robot position
 
   # [ xmin xmax ymin ymax zmin zmax amin amax ]
   velocity_bounds [-2 2 -2 2 -2 2 -180 180 ]
-  acceleration_bounds [-4 4 -4 4 -4 4 -360 360]
+  acceleration_bounds [-2 2 -2 2 -2 2 -180 180]
   gui_nose 1
   drive "omni"
   ranger_return 1.000
