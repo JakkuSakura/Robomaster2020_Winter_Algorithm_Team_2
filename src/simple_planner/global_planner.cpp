@@ -31,6 +31,10 @@
 
 namespace robomaster
 {
+float p2(float x)
+{
+  return x * x;
+}
 struct State
 {
   std::bitset<64> visited;
@@ -41,7 +45,7 @@ struct State
   friend bool operator<(const State &lhs, const State &rhs)
   {
     // TODO here
-    return -lhs.g + lhs.path.size() * 10 < -rhs.g + rhs.path.size() * 10;
+    return -lhs.g + p2(lhs.path.size()) * 1000 < -rhs.g + p2(rhs.path.size()) * 1000;
   }
 };
 class Graph
@@ -54,10 +58,7 @@ public:
     id1_ = id1;
     id2_ = id2;
   }
-  float p2(float x)
-  {
-    return x * x;
-  }
+
   float dist(float x1, float y1, float x2, float y2)
   {
     return sqrt(p2(x1 - x2) + p2(y1 - y2));
@@ -90,7 +91,7 @@ public:
         {
           best = s;
         }
-        if (++cnt > 100)
+        if (++cnt > 200)
           return best;
       }
 
@@ -107,7 +108,7 @@ public:
           // TODO test this part
           float degree = atan2f(y1 - s.y, x1 - s.x) * 180 / M_PI;
           s2.orientation = atan2f(y1 - s2.y, x1 - s2.y) * 180 / M_PI;
-          s2.g = s.g + dist(x1, y1, s.x, s.y) + distance_in_degree(s.orientation, degree) / 360.0 * 10 + distance_in_degree(degree, s2.orientation) / 360.0 * 10;
+          s2.g = s.g + 10 * p2(dist(x1, y1, s.x, s.y)) + distance_in_degree(s.orientation, degree) / 360.0 * 10 + distance_in_degree(degree, s2.orientation) / 360.0 * 10;
           s2.path = s.path;
           s2.path.push_back(i);
           que.push(s2);
@@ -175,7 +176,7 @@ public:
 
     setpoint_pub_ = nh.advertise<visualization_msgs::Marker>("set_point", 100);
     global_path_pub_ = nh.advertise<nav_msgs::Path>("path", 100);
-    point_mat_fetcher_ = nh.subscribe("/random_points", 1, &GlobalPlanner::fetch_numbers, this);
+    point_mat_fetcher_ = nh.subscribe("/blue_numbers", 1, &GlobalPlanner::fetch_numbers, this);
   }
   ~GlobalPlanner() = default;
 
@@ -198,7 +199,10 @@ private:
   void Plan(const int *mat1, const int *mat2)
   {
     Graph graph(mat1, mat2);
-    State best = graph.calc(State());
+    State s;
+    s.path.push_back(0);
+    s.visited[0] = 1;
+    State best = graph.calc(s);
     nav_msgs::Path path;
 
     path.header.stamp = ros::Time::now();
@@ -219,7 +223,7 @@ private:
         pose.header.frame_id = global_frame_;
         float x, y;
         graph.lookup(best.path[i], x, y);
-        pose.pose.position.x = x, pose.pose.position.y = y;
+        pose.pose.position.x = y, pose.pose.position.y = x;
         path.poses.push_back(pose);
       }
 
@@ -230,7 +234,7 @@ private:
 
         float x, y;
         graph.lookup(graph.pair(best.path[i]), x, y);
-        pose.pose.position.x = x, pose.pose.position.y = y;
+        pose.pose.position.x = y, pose.pose.position.y = x;
         path.poses.push_back(pose);
       }
     }
@@ -255,7 +259,6 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "global_planner");
   ros::NodeHandle nh("~");
-  ros::Duration(5).sleep();
   GlobalPlanner global_planner(nh);
   ros::spin();
   return 0;
