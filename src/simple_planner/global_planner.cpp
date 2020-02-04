@@ -35,6 +35,20 @@ float p2(float x)
 {
   return x * x;
 }
+float dist(float x1, float y1, float x2, float y2)
+{
+  return sqrt(p2(x1 - x2) + p2(y1 - y2));
+}
+
+float distance_in_degree(float alpha, float beta)
+{
+  float phi = abs(beta - alpha);
+  while (phi > 360)
+    phi -= 360;
+  float distance = phi > 180 ? 360 - phi : phi;
+  return distance;
+}
+
 struct State
 {
   std::bitset<64> visited;
@@ -45,7 +59,7 @@ struct State
   friend bool operator<(const State &lhs, const State &rhs)
   {
     // TODO here
-    return -lhs.g + p2(lhs.path.size()) * 1000 < -rhs.g + p2(rhs.path.size()) * 1000;
+    return -lhs.g + lhs.path.size() * 100 < -rhs.g + rhs.path.size() * 100;
   }
 };
 class Graph
@@ -57,20 +71,6 @@ public:
   {
     id1_ = id1;
     id2_ = id2;
-  }
-
-  float dist(float x1, float y1, float x2, float y2)
-  {
-    return sqrt(p2(x1 - x2) + p2(y1 - y2));
-  }
-
-  float distance_in_degree(float alpha, float beta)
-  {
-    float phi = abs(beta - alpha);
-    while (phi > 360)
-      phi -= 360;
-    float distance = phi > 180 ? 360 - phi : phi;
-    return distance;
   }
 
   State calc(State start)
@@ -95,7 +95,7 @@ public:
           return best;
       }
 
-      for (size_t i = 0; i < 72; i++)
+      for (size_t i = 0; i < 36; i++)
       {
         if (!s.visited[i % 36])
         {
@@ -108,7 +108,7 @@ public:
           // TODO test this part
           float degree = atan2f(y1 - s.y, x1 - s.x) * 180 / M_PI;
           s2.orientation = atan2f(y1 - s2.y, x1 - s2.y) * 180 / M_PI;
-          s2.g = s.g + 10 * p2(dist(x1, y1, s.x, s.y)) + distance_in_degree(s.orientation, degree) / 360.0 * 10 + distance_in_degree(degree, s2.orientation) / 360.0 * 10;
+          s2.g = s.g + 10 * pow(dist(x1, y1, s.x, s.y), 1.7) + distance_in_degree(s.orientation, degree) / 360.0 * 10 + distance_in_degree(degree, s2.orientation) / 360.0 * 10;
           s2.path = s.path;
           s2.path.push_back(i);
           que.push(s2);
