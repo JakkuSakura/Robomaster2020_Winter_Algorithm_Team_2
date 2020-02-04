@@ -1,5 +1,5 @@
 image: winter_camp.pgm
-resolution: 0.03
+resolution: 0.02166
 origin: [0, 0, 0]
 negate: 0
 occupied_thresh: 0.65

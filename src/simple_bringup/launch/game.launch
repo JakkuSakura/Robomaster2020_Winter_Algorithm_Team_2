@@ -1,0 +1,4 @@
+<launch>
+    <include file="$(find simple_bringup)/launch/simulator.launch" />
+    <node name="simple_game" pkg="simple_game" type="game" respawn="false" output="screen" />
+</launch>

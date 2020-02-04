@@ -1,36 +1,18 @@
-define block model
-(	
-  size [1.000 1.000 1.200]
-  ranger_return 1.000
-)
-
-define rplidar ranger
-(
-  sensor(
-    range_max 8.0
-    fov 270
-    samples 270
-  )
-  # generic model properties
-  color "black"
-  size [ 0.050 0.050 0.100 ]
-)
-
 define robot position
 (
-  size [0.0100 0.0100 0.0100]
-  origin [0.000 0.000 0.000 0.000]
+  size [0.4 0.4 0.4]
+  watchdog_timeout -1.0
+  localization "gps"
+
+  # [ xmin xmax ymin ymax zmin zmax amin amax ]
+  velocity_bounds [-2 2 -2 2 -2 2 -180 180 ]
+  acceleration_bounds [-4 4 -4 4 -4 4 -360 360]
   gui_nose 1
   drive "omni"
-  # rplidar(pose [ 0.000 0.000 0.000 0.000 ])
-  odom_error [0.03 0.03 0.00 0.05]
-  # [ xmin xmax ymin ymax zmin zmax amin amax ]				
-  velocity_bounds [-2 2 -2 2 -2 2 -90 90 ]					
-  acceleration_bounds [-2 2 -2 2 -2 2 -90 90]
   ranger_return 1.000
 )
 
-define floorplan model
+define floor model
 (
   # sombre, sensible, artistic
   color "gray30"
@@ -61,16 +43,16 @@ window
 )
 
 # load an environment bitmap
+# throw in a robot
+ robot(pose [ 0.5 0.5 0.000 90 ] name "robot" color "blue" )
 
-floorplan
+floor
 ( 
   name "RoboMaster Map"
   bitmap "./winter_camp.pgm"
-  size [13 13.00 1.000]
+  size [13.00 13.00 1.000]
   pose [6.50 6.50 0.000 0.00 ]
 )
 
-# throw in a robot
- robot(pose [ 0.5 0.5 0.000 90.000 ] name "robot" color "blue" )
-# throw in a block for test
-# block(pose [ 2.550 0.550 0.000 0.000 ] color "red"  )
+
+
