@@ -7,6 +7,8 @@
 #include <std_msgs/Int16MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
 #include "tf/transform_listener.h"
+
+#define FIXED_VALUES
 bool GetGlobalRobotPose(const std::shared_ptr<tf::TransformListener>& tf_listener,
                         const std::string& target_frame,
                         geometry_msgs::PoseStamped& robot_global_pose){
@@ -40,13 +42,22 @@ int main(int argc, char **argv)
     //random points
     std_msgs::Int16MultiArray points;
     points.data.reserve(36);
-    for(int i = 0; i < 36; i++){
-        points.data.push_back(i);
-    }
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::shuffle ( points.data.begin(), points.data.end(), gen );
 
+    #ifdef FIXED_VALUES
+        #include "../qt_tool/testdata.h"
+        for(int i = 0; i < 36; i++){
+            points.data.push_back(mat2[i]);
+        }
+    #elif
+        for(int i = 0; i < 36; i++){
+            points.data.push_back(i);
+        }
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::shuffle ( points.data.begin(), points.data.end(), gen );
+
+    #endif
+    
     //generate markers
     visualization_msgs::MarkerArray number_array;
     number_array.markers.resize(72);

@@ -16,7 +16,7 @@ MainWindow::~MainWindow()
 }
 void MainWindow::init()
 {
-    std::vector<int> result = calculate_path_a_star(mat1, mat2);
+    std::vector<int> result = calculate_path(mat1, mat2);
     std::cout << "Result: ";
     for (int i = 0; i < 36; i++)
     {
