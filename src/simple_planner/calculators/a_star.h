@@ -4,6 +4,7 @@
 #include "../graph.h"
 namespace A_Star
 {
+const int STEP_VALUE = 100;
 struct State
 {
     std::bitset<64> visited;
@@ -13,7 +14,7 @@ struct State
     std::vector<int> path;
     friend bool operator<(const State &lhs, const State &rhs)
     {
-        return -lhs.g + lhs.path.size() * 100 < -rhs.g + rhs.path.size() * 100;
+        return -lhs.g + lhs.path.size() * STEP_VALUE < -rhs.g + rhs.path.size() * STEP_VALUE;
     }
 };
 
@@ -57,9 +58,9 @@ public:
         {
             best.path.push_back(i);
         }
-        
+
         int cnt = 0;
-        while (que.size() > 0 && que.size() < 1000000)
+        while (que.size() > 0 && que.size() < 100000)
         {
             const State s = que.top();
             que.pop();
@@ -78,15 +79,25 @@ public:
             {
                 rank[i] = i;
             }
-            // std::sort(rank, rank + 36, [&, this](int p1, int p2) {
-            //     float x1, y1, x2, y2;
-            //     lookup(id1_, id2_, p1, x1, y1);
-            //     lookup(id1_, id2_, p2, x2, y2);
-            //     return dist(x1, y1, s.x, s.y) < dist(x2, y2, s.x, s.y);
-            // });
+            std::sort(rank, rank + 36, [&, this](int p1, int p2) {
+                float x1, y1, x2, y2;
+                lookup(id1_, id2_, p1, x1, y1);
+                lookup(id1_, id2_, p2, x2, y2);
+                return dist(x1, y1, s.x, s.y) < dist(x2, y2, s.x, s.y);
+            });
+            // static int count = 0;
+            // if (++count < 100)
+            // {
+            //     std::cout << "(" << s.x << ", " << s.y << ") ranked ";
+            //     for (size_t i = 0; i < 36; i++)
+            //     {
+            //         std::cout << rank[i] << " ";
+            //     }
+            //     std::cout << std::endl;
+            // }
 
             int cnt = 0;
-            for (size_t j = 0; j < 36 && cnt < 36; j++)
+            for (size_t j = 0; j < 36 && cnt < 8; j++)
             {
                 int i = rank[j];
                 if (!s.visited[i % 36])
@@ -101,26 +112,26 @@ public:
                     // TODO test this part
                     // float degree = atan2f(y1 - s.y, x1 - s.x) * 180 / M_PI;
                     // s2.orientation = atan2f(y1 - s2.y, x1 - s2.y) * 180 / M_PI;
-                    s2.g = s.g + 10 * dist(x1, y1, s.x, s.y);
+
+                    s2.g = s.g + 20 * dist(x1, y1, s.x, s.y);
                     //  + distance_in_degree(s.orientation, degree) / 180.0 * 60 + distance_in_degree(degree, s2.orientation) / 180.0 * 60;
                     s2.path = s.path;
                     s2.path.push_back(i);
-                    que.push(s2);
+                    if (s2.g < s2.path.size() * STEP_VALUE)
+                        que.push(s2);
                 }
             }
         }
         return best;
     }
-
 };
-} // namespace A_STAR
+} // namespace A_Star
 
 std::vector<int> calculate_path_a_star(const int *mat1, const int *mat2)
 {
     using namespace A_Star;
+    srand(time(0));
     State s;
-    s.path.push_back(0);
-    s.visited[0] = 1;
     Graph graph(mat1, mat2);
     State best = graph.calc(s);
     return best.path;
