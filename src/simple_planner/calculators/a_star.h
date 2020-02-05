@@ -60,7 +60,7 @@ public:
         }
 
         int cnt = 0;
-        while (que.size() > 0 && que.size() < 100000)
+        while (que.size() > 0 && que.size() < 1000000)
         {
             const State s = que.top();
             que.pop();
@@ -97,7 +97,7 @@ public:
             // }
 
             int cnt = 0;
-            for (size_t j = 0; j < 36 && cnt < 8; j++)
+            for (size_t j = 0; j < 36 && cnt < 10; j++)
             {
                 int i = rank[j];
                 if (!s.visited[i % 36])
@@ -106,15 +106,16 @@ public:
                     State s2;
                     s2.visited = s.visited;
                     s2.visited[i % 36] = 1;
-                    float x1, y1;
-                    lookup(id1_, id2_, i, x1, y1);           // original location
+                    float midx, midy;
+                    lookup(id1_, id2_, i, midx, midy);           // original location
                     lookup(id1_, id2_, pair(i), s2.x, s2.y); // teleport
                     // TODO test this part
-                    // float degree = atan2f(y1 - s.y, x1 - s.x) * 180 / M_PI;
-                    // s2.orientation = atan2f(y1 - s2.y, x1 - s2.y) * 180 / M_PI;
+                    float degree = atan2f(midy - s.y, midx - s.x) * 180 / M_PI;
+                    s2.orientation = atan2f(s2.y - midy, s2.x - midx) * 180 / M_PI;
 
-                    s2.g = s.g + 20 * dist(x1, y1, s.x, s.y);
-                    //  + distance_in_degree(s.orientation, degree) / 180.0 * 60 + distance_in_degree(degree, s2.orientation) / 180.0 * 60;
+                    s2.g = s.g + 10 * dist(midx, midy, s.x, s.y)
+                      + distance_in_degree(s.orientation, degree) / 180.0 * 40
+                      + distance_in_degree(degree, s2.orientation) / 180.0 * 40;
                     s2.path = s.path;
                     s2.path.push_back(i);
                     if (s2.g < s2.path.size() * STEP_VALUE)
