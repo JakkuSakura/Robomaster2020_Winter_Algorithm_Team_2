@@ -109,7 +109,7 @@ public:
                     float midx, midy;
                     lookup(id1_, id2_, i, midx, midy);           // original location
                     lookup(id1_, id2_, pair(i), s2.x, s2.y); // teleport
-                    // TODO test this part
+
                     float degree = atan2f(midy - s.y, midx - s.x) * 180 / M_PI;
                     s2.orientation = atan2f(s2.y - midy, s2.x - midx) * 180 / M_PI;
 
