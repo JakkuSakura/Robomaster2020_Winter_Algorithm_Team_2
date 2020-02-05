@@ -53,8 +53,13 @@ public:
         que.push(start);
         State best;
         best.g = 1e6;
+        for (size_t i = 0; i < 36; i++)
+        {
+            best.path.push_back(i);
+        }
+        
         int cnt = 0;
-        while (que.size())
+        while (que.size() > 0 && que.size() < 1000000)
         {
             const State s = que.top();
             que.pop();
@@ -73,15 +78,15 @@ public:
             {
                 rank[i] = i;
             }
-            std::sort(rank, rank + 36, [&, this](int p1, int p2) {
-                float x1, y1, x2, y2;
-                lookup(id1_, id2_, p1, x1, y1);
-                lookup(id1_, id2_, p2, x2, y2);
-                return dist(x1, y1, s.x, s.y) < dist(x2, y2, s.x, s.y);
-            });
+            // std::sort(rank, rank + 36, [&, this](int p1, int p2) {
+            //     float x1, y1, x2, y2;
+            //     lookup(id1_, id2_, p1, x1, y1);
+            //     lookup(id1_, id2_, p2, x2, y2);
+            //     return dist(x1, y1, s.x, s.y) < dist(x2, y2, s.x, s.y);
+            // });
 
             int cnt = 0;
-            for (size_t j = 0; j < 36 && cnt < 8; j++)
+            for (size_t j = 0; j < 36 && cnt < 36; j++)
             {
                 int i = rank[j];
                 if (!s.visited[i % 36])
@@ -94,9 +99,10 @@ public:
                     lookup(id1_, id2_, i, x1, y1);           // original location
                     lookup(id1_, id2_, pair(i), s2.x, s2.y); // teleport
                     // TODO test this part
-                    float degree = atan2f(y1 - s.y, x1 - s.x) * 180 / M_PI;
-                    s2.orientation = atan2f(y1 - s2.y, x1 - s2.y) * 180 / M_PI;
-                    s2.g = s.g + std::min(70.0, 30 * pow(dist(x1, y1, s.x, s.y), 2)) + distance_in_degree(s.orientation, degree) / 180.0 * 60 + distance_in_degree(degree, s2.orientation) / 180.0 * 60;
+                    // float degree = atan2f(y1 - s.y, x1 - s.x) * 180 / M_PI;
+                    // s2.orientation = atan2f(y1 - s2.y, x1 - s2.y) * 180 / M_PI;
+                    s2.g = s.g + 10 * dist(x1, y1, s.x, s.y);
+                    //  + distance_in_degree(s.orientation, degree) / 180.0 * 60 + distance_in_degree(degree, s2.orientation) / 180.0 * 60;
                     s2.path = s.path;
                     s2.path.push_back(i);
                     que.push(s2);
