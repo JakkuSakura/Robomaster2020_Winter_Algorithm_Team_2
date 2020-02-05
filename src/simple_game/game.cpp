@@ -111,7 +111,7 @@ int main(int argc, char **argv)
     ros::Time start;
     std::vector<int> pair;
     sleep(10);
-    ros::Rate rate(20);
+    ros::Rate rate(30);
     while (ros::ok()){
         GetGlobalRobotPose(tf_listener,"map",robot_pose);
 

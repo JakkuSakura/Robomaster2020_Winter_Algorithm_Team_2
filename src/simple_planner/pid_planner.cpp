@@ -97,8 +97,9 @@ class PIDPlanner{
           }else{
           cmd_vel.angular.z = std::max(p_yaw_coeff_*diff_yaw, -max_yaw_speed_);
           }
-          cmd_vel.linear.x = 0;
-          cmd_vel.linear.y = 0;
+          // without stopping
+          // cmd_vel.linear.x = 0;
+          // cmd_vel.linear.y = 0;
         }
 
       } else{
