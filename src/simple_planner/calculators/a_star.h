@@ -128,7 +128,7 @@ public:
 };
 } // namespace A_Star
 
-std::vector<int> calculate_path_a_star(const int *mat1, const int *mat2)
+std::vector<int> calculate_path(const int *mat1, const int *mat2)
 {
     using namespace A_Star;
     srand(time(0));

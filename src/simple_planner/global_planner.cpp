@@ -69,7 +69,7 @@ private:
   }
   void Plan(const int *mat1, const int *mat2)
   {
-    std::vector<int> best = calculator(mat1, mat2);
+    std::vector<int> best = calculate_path(mat1, mat2);
     nav_msgs::Path path;
 
     path.header.stamp = ros::Time::now();
@@ -119,7 +119,6 @@ private:
 
   ros::Subscriber point_mat_fetcher_;
   bool planned = false;
-  calculate_path calculator = calculate_path_a_star;
 };
 } // namespace robomaster
 

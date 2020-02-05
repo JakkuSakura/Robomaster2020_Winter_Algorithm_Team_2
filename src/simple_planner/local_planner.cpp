@@ -25,7 +25,8 @@
 #include <Eigen/Eigen>
 #include <chrono>
 
-#include "cubic_spline/cubic_spline_ros.h"
+// #include "cubic_spline/cubic_spline_ros.h"
+#include "straight_line/straight_line.h"
 #include "utility.h"
 
 namespace robomaster
@@ -101,7 +102,6 @@ private:
 
             // 4. Get prune index from given global path
             NextPose(robot_pose, global_path_, prune_index_, prune_ahead_dist_);
-            // TODO find next pose
 
             // 5. Generate the prune path and transform it into local planner frame
             nav_msgs::Path prune_path, local_path;
@@ -130,7 +130,7 @@ private:
             FollowTraj(prune_path.poses.front(), local_path, cmd_vel);
             cmd_vel_pub_.publish(cmd_vel);
 
-            auto plan_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - begin);
+            // auto plan_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - begin);
             // ROS_INFO("Planning takes %f ms and passed %d/%d.",
             //          plan_time.count() / 1000.,
             //          prune_index_,

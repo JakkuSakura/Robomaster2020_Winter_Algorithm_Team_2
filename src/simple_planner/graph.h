@@ -1,7 +1,6 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 #include <vector>
-typedef std::vector<int> (*calculate_path)(const int *, const int *);
 int pair(int x)
 {
     if (x < 36)
