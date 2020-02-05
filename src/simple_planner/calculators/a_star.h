@@ -96,7 +96,7 @@ public:
                     // TODO test this part
                     float degree = atan2f(y1 - s.y, x1 - s.x) * 180 / M_PI;
                     s2.orientation = atan2f(y1 - s2.y, x1 - s2.y) * 180 / M_PI;
-                    s2.g = s.g + std::min(95.0, 30 * pow(dist(x1, y1, s.x, s.y), 2)) + distance_in_degree(s.orientation, degree) / 180.0 * 30 + distance_in_degree(degree, s2.orientation) / 180.0 * 15;
+                    s2.g = s.g + std::min(70.0, 30 * pow(dist(x1, y1, s.x, s.y), 2)) + distance_in_degree(s.orientation, degree) / 180.0 * 60 + distance_in_degree(degree, s2.orientation) / 180.0 * 60;
                     s2.path = s.path;
                     s2.path.push_back(i);
                     que.push(s2);

@@ -45,7 +45,7 @@ public:
     // -------------------visulize endpoints and trajectory---------------------
     tf_listener_ = std::make_shared<tf::TransformListener>();
 
-    setpoint_pub_ = nh.advertise<visualization_msgs::Marker>("set_point", 100);
+    // setpoint_pub_ = nh.advertise<visualization_msgs::Marker>("set_point", 100);
     global_path_pub_ = nh.advertise<nav_msgs::Path>("path", 100);
     point_mat_fetcher_ = nh.subscribe("/blue_numbers", 1, &GlobalPlanner::fetch_numbers, this);
   }
@@ -115,7 +115,7 @@ private:
   std::shared_ptr<tf::TransformListener> tf_listener_;
   std::string global_frame_;
   ros::Publisher global_path_pub_;
-  ros::Publisher setpoint_pub_;
+  // ros::Publisher setpoint_pub_;
 
   ros::Subscriber point_mat_fetcher_;
   bool planned = false;
