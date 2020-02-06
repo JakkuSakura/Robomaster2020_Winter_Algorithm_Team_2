@@ -2,6 +2,8 @@
 #include "ui_mainwindow.h"
 #include <qpainter.h>
 #include <stdio.h>
+#include <QKeyEvent>
+
 #include "../simple_planner/calculators/a_star.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -16,37 +18,41 @@ MainWindow::~MainWindow()
 }
 void MainWindow::init()
 {
-    std::vector<int> result = calculate_path(mat1, mat2);
-    std::cout << "Result: ";
-    for (int i = 0; i < 36; i++)
+    std::cout << "Generating global path" << std::endl;
+    result = calculate_path(mat1, mat2);
+
+#ifdef DEBUG_DATA_SHOWING_ENABLED
+    show_debug_data(mat1, mat2, result);
+#endif
+    
+    
+}
+void MainWindow::keyPressEvent(QKeyEvent *ev)
+{
+    switch (ev->key())
     {
-        std::cout << result[i] << " ";
-    }
-    std::cout << std::endl;
-    for (int i = 0; i < 36; ++i)
-    {
-        {
-            float x, y;
-            lookup(mat1, mat2, result[i], x, y);
-            QPoint pose(x * 30 + 100, y * 30 + 100);
-            line.push_back(pose);
-        }
-        {
-            float x, y;
-            lookup(mat1, mat2, pair(result[i]), x, y);
-            QPoint pose(x * 30 + 100, y * 30 + 100);
-            line.push_back(pose);
-        }
+    case Qt::Key_R:
+        std::cout << "Re-run" << std::endl;
+        result.clear();
+        repaint(rect());
+        init();
+        update();
+        break;
+    case Qt::Key_Escape:
+        exit(0);
+        break;
+    default:
+        break;
     }
 }
 void MainWindow::paintEvent(QPaintEvent *)
 {
     char buf[32];
     QPainter p(this);
+    
     p.setPen(Qt::red);
     for (int i = 0; i < 36; ++i)
     {
-
         float x, y;
         lookup(mat1, mat2, i, x, y);
         QPoint pose(x * 30 + 100, y * 30 + 100);
@@ -63,6 +69,23 @@ void MainWindow::paintEvent(QPaintEvent *)
         p.drawText(pose, buf);
     }
 
+    std::vector<QPoint> line;
+    for (int i = 0; i < (int)result.size(); ++i)
+    {
+        {
+            float x, y;
+            lookup(mat1, mat2, result[i], x, y);
+            QPoint pose(x * 30 + 100, y * 30 + 100);
+            line.push_back(pose);
+        }
+        {
+            float x, y;
+            lookup(mat1, mat2, pair(result[i]), x, y);
+            QPoint pose(x * 30 + 100, y * 30 + 100);
+            line.push_back(pose);
+        }
+    }
+    
     p.setPen(Qt::black);
     for (int j = 0; j < (int)line.size() - 1; j++)
         p.drawLine(line.at(j), line.at(j + 1));

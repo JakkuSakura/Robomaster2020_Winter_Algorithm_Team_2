@@ -15,8 +15,9 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     void paintEvent(QPaintEvent *ev);
+    void keyPressEvent(QKeyEvent *ev);
     void init();
-    std::vector<QPoint> line;
+    std::vector<int> result;
     const int *mat1, *mat2;
 
 private:

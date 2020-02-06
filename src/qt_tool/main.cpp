@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
     #include "testdata.h"
     w.mat1 = mat1;
     w.mat2 = mat2;
-    w.init();
     w.show();
+    w.init();
     return a.exec();
 }

@@ -47,7 +47,27 @@ public:
         id1_ = id1;
         id2_ = id2;
     }
+    float consumed_time(std::vector<int> result)
+    {
+        float g = 0;
+        float nowx = 0, nowy = 0;
+        float orientation = 0;
+        for (int point : result)
+        {
+            float midx, midy;
+            lookup(id1_, id2_, point, midx, midy);
 
+            float endx, endy;
+            lookup(id1_, id2_, pair(point), endx, endy);
+
+            float mid_orientation = atan2f(midy - nowy, midx - nowx) * 180 / M_PI;
+            float next_orientation = atan2f(endy - midy, endx - midx) * 180 / M_PI;
+
+            g += 10 * dist(midx, midy, nowx, nowy) + distance_in_degree(orientation, mid_orientation) / 180.0 * 40 + distance_in_degree(mid_orientation, next_orientation) / 180.0 * 40;
+            nowx = endx, nowy = endy, orientation = next_orientation;
+        }
+        return g;
+    }
     State calc(State start)
     {
         std::priority_queue<State> que;
@@ -107,15 +127,13 @@ public:
                     s2.visited = s.visited;
                     s2.visited[i % 36] = 1;
                     float midx, midy;
-                    lookup(id1_, id2_, i, midx, midy);           // original location
+                    lookup(id1_, id2_, i, midx, midy);       // original location
                     lookup(id1_, id2_, pair(i), s2.x, s2.y); // teleport
 
                     float degree = atan2f(midy - s.y, midx - s.x) * 180 / M_PI;
                     s2.orientation = atan2f(s2.y - midy, s2.x - midx) * 180 / M_PI;
 
-                    s2.g = s.g + 10 * dist(midx, midy, s.x, s.y)
-                      + distance_in_degree(s.orientation, degree) / 180.0 * 40
-                      + distance_in_degree(degree, s2.orientation) / 180.0 * 40;
+                    s2.g = s.g + 10 * dist(midx, midy, s.x, s.y) + distance_in_degree(s.orientation, degree) / 180.0 * 40 + distance_in_degree(degree, s2.orientation) / 180.0 * 40 + 10.0 * rand() / RAND_MAX;
                     s2.path = s.path;
                     s2.path.push_back(i);
                     if (s2.g < s2.path.size() * STEP_VALUE)
@@ -136,6 +154,21 @@ std::vector<int> calculate_path(const int *mat1, const int *mat2)
     Graph graph(mat1, mat2);
     State best = graph.calc(s);
     return best.path;
+}
+
+#define DEBUG_DATA_SHOWING_ENABLED
+void show_debug_data(const int *mat1, const int *mat2, std::vector<int> result)
+{
+    using namespace A_Star;
+
+    std::cout << "Result: ";
+    for (int i = 0; i < 36; i++)
+    {
+        std::cout << result[i] << " ";
+    }
+    std::cout << std::endl;
+    Graph graph(mat1, mat2);
+    std::cout << "Time: " << graph.consumed_time(result) << std::endl;
 }
 
 #endif
