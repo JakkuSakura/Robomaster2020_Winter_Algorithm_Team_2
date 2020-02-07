@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <QKeyEvent>
 
-#include "../simple_planner/calculators/a_star.h"
+#include "../simple_planner/calculators/hybrid.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)

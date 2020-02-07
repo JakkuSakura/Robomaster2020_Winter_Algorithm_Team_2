@@ -2,32 +2,43 @@
 #define HYBRID_H
 #include <bits/stdc++.h>
 #include "../graph.h"
+
 namespace Hybrid
 {
+#include "a_star.h"
+
 inline bool random(double p)
 {
   return 1.0 * rand() / RAND_MAX < p;
 }
-const int STEP_VALUE = 100;
-struct State
-{
-  std::bitset<64> visited;
-  float x = 0, y = 0;
-  float orientation = 0;
-  float g = 0;
-  std::vector<int> path;
-  friend bool operator<(const State &lhs, const State &rhs)
-  {
-    return -lhs.g + lhs.path.size() * STEP_VALUE < -rhs.g + rhs.path.size() * STEP_VALUE;
-  }
-};
+using A_Star::State;
+typedef std::vector<int> solution;
+#define show_line_num() std::cerr << __LINE__ << std::endl
+#define show_vector(x)                             \
+  std::cerr << #x " at line " << __LINE__ << ": "; \
+  for (auto &&i : x)                               \
+  {                                                \
+    std::cerr << i << ", ";                        \
+  }                                                \
+  std::cerr << std::endl
 
 class Graph
 {
-  size_t soft_max_generation_population = 5000;
-  size_t absolute_max_generation_population = 6000;
-  double probability_in_between = .30;
-  double probability_when_worse = .01;
+  size_t max_species_population = 50;
+  size_t elite_protection_number_per_species = 3;
+
+  float same_speices_distance_threshold = 370;
+
+  int generation_number = 1000;
+
+  double inherit_probability = 1;
+  double swap_probability = 1;
+  double reverse_probability = 1;
+  double shuffle_probability = 1;
+  double transform_probabilty = 1;
+  double crossover_within_species_probability = 1;
+  double crossover_over_species_probability = 1;
+
   const int *id1_, *id2_;
 
 protected:
@@ -55,7 +66,52 @@ public:
     id1_ = id1;
     id2_ = id2;
   }
-  float consumed_time(std::vector<int> result)
+  std::vector<float> fitness(const std::vector<solution> &speices)
+  {
+    assert(speices.size() > 0);
+    std::vector<float> scores;
+    std::vector<float> fits;
+    float average_time = 0;
+    for (auto &&so : speices)
+    {
+      float time = consumed_time(so);
+      scores.push_back(time);
+      average_time += time;
+    }
+    average_time /= speices.size();
+
+    for (size_t i = 0; i < speices.size(); i++)
+    {
+      float fit = average_time / scores[i];
+      fits.push_back(fit);
+    }
+
+    std::vector<float> fits2 = fits;
+    float non_elite_average_fitness = 0;
+    sort(fits2.begin(), fits2.end(), std::greater<float>());
+    for (size_t i = elite_protection_number_per_species; i < fits2.size(); i++)
+    {
+      non_elite_average_fitness += fits2[i];
+    }
+    non_elite_average_fitness /= speices.size();
+    
+    
+    float projected_non_elite_species_population = std::max(0.01f, non_elite_average_fitness * (speices.size() - elite_protection_number_per_species));
+
+    float adj = (max_species_population - elite_protection_number_per_species) /  projected_non_elite_species_population;
+    
+    // ind * adj = adjusted_expect_survial_probability
+    for (size_t i = 0; i < fits.size(); i++)
+    {
+      if(i < elite_protection_number_per_species)
+        fits[i] = 1;
+      else
+        fits[i] *= adj;
+    }
+    
+    return fits;
+  }
+  float consumed_time(const solution &result)
   {
     float g = 0;
     float nowx = 0, nowy = 0;
@@ -76,97 +132,278 @@ public:
     }
     return g;
   }
-  std::vector<std::vector<int>> initial_generation()
+  solution to_solution(const std::vector<int> &order)
   {
-    std::multiset<State> current_generation;
-    current_generation.insert(State());
-    std::multiset<State> next_generation;
-
-    for (size_t step = 0; step < 36; step++)
+    solution sol(order.size());
+    for (size_t i = 0; i < order.size(); ++i)
     {
-      while (current_generation.size())
+      sol[order[i]] = i;
+    }
+    return sol;
+  }
+  std::vector<int> to_order(const solution &a)
+  {
+    std::vector<int> ord(a.size());
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+      assert(a[i] >= 0 && a[i] < (int)a.size());
+
+      ord[a[i]] = i;
+    }
+    return ord;
+  }
+
+  float genetic_distance(const solution &a, const solution &b)
+  {
+    assert(a.size() == b.size());
+    std::vector<int> a2 = to_order(a), b2 = to_order(b);
+
+    float dist = 0;
+    for (size_t i = 0; i < a.size(); i++)
+    {
+      dist += abs(a2[i] - b2[i]);
+    }
+
+    return dist;
+  }
+  std::vector<solution> initial_generation()
+  {
+    A_Star::Graph graph(id1_, id2_);
+    auto result = graph.calc(State());
+    std::vector<solution> results;
+    // results.push_back(result.path);
+    for (size_t i = 0; i < 100; i++)
+    {
+      solution res;
+      for (size_t i = 0; i < 36; i++)
       {
-        const State s = *current_generation.begin();
-        current_generation.erase(current_generation.begin());
-
-        int cnt = 0;
-        for (size_t j = 0; j < 36; j++)
-        {
-          int i = j;
-          if (s.visited[i % 36])
-            continue;
-
-          ++cnt;
-          State s2;
-          s2.visited = s.visited;
-          s2.visited[i % 36] = 1;
-          float midx, midy;
-          lookup(id1_, id2_, i, midx, midy);       // original location
-          lookup(id1_, id2_, pair(i), s2.x, s2.y); // teleport
-
-          float degree = atan2f(midy - s.y, midx - s.x) * 180 / M_PI;
-          s2.orientation = atan2f(s2.y - midy, s2.x - midx) * 180 / M_PI;
-
-          s2.g = s.g + 10 * dist(midx, midy, s.x, s.y) + distance_in_degree(s.orientation, degree) / 180.0 * 40 + distance_in_degree(degree, s2.orientation) / 180.0 * 40;
-          s2.path = s.path;
-          s2.path.push_back(i);
-          if (next_generation.size() < soft_max_generation_population)
-          {
-            next_generation.insert(s2);
-          }
-          else
-          {
-            auto best = next_generation.begin();
-            auto worst = next_generation.rbegin();
-            if (s2.g < best->g)
-            {
-              next_generation.insert(s2);
-            }
-            else if (s2.g < worst->g)
-            {
-              if (random(probability_in_between))
-              {
-                next_generation.insert(s2);
-              }
-            }
-            else // worse
-            {
-              if (random(probability_when_worse))
-              {
-                next_generation.insert(s2);
-              }
-            }
-          }
-          while (next_generation.size() > absolute_max_generation_population)
-          {
-            next_generation.erase(--next_generation.end());
-          }
-
-        } // end for
-      }   // end while
-      current_generation.swap(next_generation);
-    } // end for
-    std::vector<std::vector<int>> results;
-    for (auto &&state : current_generation)
-    {
-      results.push_back(state.path);
+        res.push_back(i);
+      }
+      random_shuffle(++res.begin(), res.end(), [](int i) { return rand() % i; });
+      results.push_back(res);
     }
     return results;
+  }
+  std::vector<std::vector<solution>> divide_species(std::vector<std::vector<solution>> &population, std::vector<solution> solutions)
+  {
+    for (solution &s : solutions)
+    {
+
+      bool found = false;
+      for (std::vector<solution> &speices : population)
+      {
+        if (speices.size())
+        {
+          float distance = genetic_distance(s, speices[0]);
+          if (distance < same_speices_distance_threshold)
+          {
+
+            speices.push_back(s);
+            found = true;
+
+            break;
+          }
+        }
+      }
+      if (!found)
+      {
+
+        std::vector<solution> species;
+        species.push_back(s);
+        population.push_back(species);
+      }
+    }
+    return population;
+  }
+  std::vector<solution> crossover(const solution &s1, const solution &s2)
+  {
+    assert(s1.size() == s2.size());
+    std::vector<solution> solutions;
+    { // PMX
+      int a = rand() % s1.size(), b = rand() % s1.size();
+      if (a > b)
+        std::swap(a, b);
+
+      solution child1(s1.size(), -1), child2(s2.size(), -1);
+
+      for (int i = a; i <= b; ++i)
+      {
+        child1[i] = s2[i];
+        child2[i] = s1[i];
+      }
+      auto oper = [&](const solution &parent, solution &child) {
+        for (int i = 0; i < (int)s1.size(); ++i)
+        {
+          if (a <= i && i <= b)
+            continue;
+          int now = parent[i];
+          solution::const_iterator iter;
+          while ((iter = std::find(child.begin(), child.end(), now), iter != child.end()))
+          {
+            int index = iter - child.begin();
+            now = parent[index];
+          }
+          child[i] = now;
+        }
+      };
+      oper(s1, child1);
+      oper(s2, child2);
+      solutions.push_back(child1);
+      solutions.push_back(child2);
+    }
+
+    return solutions;
+  }
+
+  solution evolve(const std::vector<solution> gen)
+  {
+
+    std::vector<std::vector<solution>> population, next_population;
+    divide_species(population, gen);
+
+    std::cout << "Generation " << 0 << " ended with " << gen.size() << " solutions in " << population.size() << " species, and the best solution comsumes " << consumed_time(pick_best(population)) << " units" << std::endl;
+
+    std::vector<solution> next_gen;
+    for (int i = 1; i <= generation_number; ++i)
+    {
+      // new solutions
+      for (auto &&species : population)
+      {
+
+        std::sort(species.begin(), species.end(),
+                  [&, this](const solution &s1, const solution &s2) {
+                    return consumed_time(s1) < consumed_time(s2);
+                  });
+
+        for (size_t i = 0; i < species.size(); i++)
+        {
+          const solution &solu = species[i];
+          assert(solu.size() > 0);
+          // inherit
+          if (random(inherit_probability))
+          {
+            next_gen.push_back(solu);
+          }
+
+          // mutations
+          if (random(swap_probability))
+          {
+            solution s = solu;
+            int a = rand() % s.size(), b = rand() % s.size();
+            std::swap(s[a], s[b]);
+            next_gen.push_back(s);
+          }
+
+          if (random(reverse_probability))
+          {
+            solution s = solu;
+            int a = rand() % s.size(), b = rand() % s.size();
+            if (a > b)
+              std::swap(a, b);
+            std::reverse(s.begin() + a, s.begin() + (b + 1));
+            next_gen.push_back(s);
+          }
+
+          if (random(shuffle_probability))
+          {
+            solution s = solu;
+            int a = rand() % s.size(), b = rand() % s.size();
+            if (a > b)
+              std::swap(a, b);
+            std::random_shuffle(s.begin() + a, s.begin() + (b + 1), [](int x) { return rand() % x; });
+            next_gen.push_back(s);
+          }
+
+          // if (random(transform_probabilty))
+          // {
+          // int a = rand() % solu.size(), b = rand() % solu.size(), c = rand() % solu.size();
+          // not gonna implement it yet
+          // }
+
+          // crossover
+          if (random(crossover_within_species_probability))
+          {
+            assert(species.size() > 0);
+            solution s2 = species[rand() % species.size()];
+            auto &&children = crossover(solu, s2);
+            for (auto &&child : children)
+            {
+              next_gen.push_back(child);
+            }
+          }
+
+          if (random(crossover_over_species_probability))
+          {
+            assert(population.size() > 0);
+            auto &&species2 = population[rand() % population.size()];
+            assert(species2.size() > 0);
+            solution s2 = species2[rand() % species2.size()];
+            auto &&children = crossover(solu, s2);
+            for (auto &&child : children)
+            {
+              next_gen.push_back(child);
+            }
+          }
+        }
+      }
+
+      divide_species(next_population, next_gen);
+
+      next_gen.clear();
+      population.clear();
+
+      for (auto &&species : next_population)
+      {
+        std::vector<solution> spe;
+        auto fits = fitness(species);
+
+        for (size_t i = 0; i < species.size(); i++)
+        {
+          if (random(fits[i]))
+          {
+            spe.push_back(species[i]);
+          }
+        }
+        if (spe.size())
+          population.push_back(spe);
+      }
+      next_population.clear();
+      assert(population.size() > 0);
+
+      int count = 0;
+      for (auto &&species : population)
+        count += species.size();
+      std::cout << "Generation " << i << " ended with " << count << " solutions in " << population.size() << " species, and the best solution comsumes " << consumed_time(pick_best(population)) << " units" << std::endl;
+    }
+
+    return pick_best(population);
+  }
+  solution pick_best(std::vector<std::vector<solution>> population)
+  {
+    solution best = population[0][0];
+    for (auto &&species : population)
+      for (auto &&sol : species)
+        if (consumed_time(sol) < consumed_time(best))
+          best = sol;
+    return best;
+
   }
 };
 } // namespace Hybrid
 
-std::vector<int> calculate_path(const int *mat1, const int *mat2)
+Hybrid::solution calculate_path(const int *mat1, const int *mat2)
 {
   using namespace Hybrid;
   srand(time(0));
   Graph graph(mat1, mat2);
   auto results = graph.initial_generation();
-  // TODO adapt hybrid algorithm for stage two
-  return results[0];
+  solution best = graph.evolve(results);
+
+  return best;
+  // return results[rand() % results.size()];
 }
 #define DEBUG_DATA_SHOWING_ENABLED
-void show_debug_data(const int *mat1, const int *mat2, std::vector<int> result)
+void show_debug_data(const int *mat1, const int *mat2, const Hybrid::solution &result)
 {
   using namespace Hybrid;
 
@@ -177,6 +414,6 @@ void show_debug_data(const int *mat1, const int *mat2, std::vector<int> result)
   }
   std::cout << std::endl;
   Graph graph(mat1, mat2);
-  std::cout << "Time: " << graph.consumed_time(result) << std::endl;
+  std::cout << "Predicted consumed time: " << graph.consumed_time(result) << std::endl;
 }
 #endif // HYBRID_H
