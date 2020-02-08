@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 #ifdef GENERATE_DATA
             std::ofstream output("run.dat", std::ios::app);
             output << dur << std::endl;
-            system("killall roscore");
+            system("killall rosmaster");
 #endif
             ros::shutdown();
         }
