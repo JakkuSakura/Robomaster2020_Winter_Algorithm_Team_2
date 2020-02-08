@@ -78,7 +78,7 @@ private:
     path.header.frame_id = global_frame_;
 
 #ifdef GENERATE_DATA
-    std::ofstream output("run.dat", std::ios::app);
+    std::ofstream output(data_filename, std::ios::app);
     for (size_t i = 0; i < 36; i++)
     {
       output << best[i] << " ";

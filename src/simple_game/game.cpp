@@ -156,7 +156,7 @@ int main(int argc, char **argv)
             auto dur = ros::Time::now() - start;
             std::cout<<"Finish: "<< dur <<" secs"<<std::endl;
 #ifdef GENERATE_DATA
-            std::ofstream output("run.dat", std::ios::app);
+            std::ofstream output(data_filename, std::ios::app);
             output << dur << std::endl;
             system("killall rosmaster");
 #endif
