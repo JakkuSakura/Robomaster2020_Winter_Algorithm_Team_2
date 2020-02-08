@@ -130,7 +130,7 @@ class Graph
 
   float same_speices_distance_threshold = 10;
 
-  int generation_number = 1000;
+  int generation_number = 100;
   int thread_number = 4;
 
   double inherit_probability = 0.03;
@@ -203,7 +203,7 @@ public:
   std::vector<Solution> initial_generation()
   {
     std::vector<Solution> results;
-    // results.push_back(A_Star::Graph(mat1, mat2).calc(A_Star::State()).path);
+    results.push_back(A_Star::Graph(mat1, mat2).calc(A_Star::State()).path);
     for (size_t i = 0; i < 100; i++)
     {
       Solution res;
@@ -319,7 +319,7 @@ public:
       Solution s = solu;
 
       int a = rand() % s.size(), b = rand() % s.size();
-      std::swap(s.at(a), s.at(b));
+      std::swap(s.mut_ref(a), s.mut_ref(b));
 
       // assert(s.size() > 0);
       next_gen.push_back(s);
@@ -507,7 +507,6 @@ std::vector<int> calculate_path(const int *mat1, const int *mat2)
   auto results = graph.initial_generation();
   Solution best = graph.evolve(results);
   ::show_debug_data(mat1, mat2, best);
-  exit(0);
   return best.unwrap();
 }
 

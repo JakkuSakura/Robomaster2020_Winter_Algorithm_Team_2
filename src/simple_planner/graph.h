@@ -65,7 +65,7 @@ inline float distance_in_degree(float alpha, float beta)
 class Solution
 {
     std::vector<int> v;
-    volatile float time = 0;
+    mutable float cached_time = 0;
 
 public:
     typedef std::vector<int>::const_iterator const_iterator;
@@ -79,27 +79,29 @@ public:
     Solution &operator=(const Solution &s)
     {
         v = s.v;
-        time = s.time;
+        cached_time = s.cached_time;
 
         return *this;
     }
-    Solution(const Solution &s) : v(s.v), time(s.time)
+    Solution(const Solution &s) : v(s.v), cached_time(s.cached_time)
     {
+    }
+    Solution(const std::vector<int> &v) : v(v), cached_time(0)
+    {
+        // check();
     }
     void set(int i, int val)
     {
-        // if (!(val >= 0 && val < 36))
-        //   throw std::invalid_argument("Value for this is too large");
         v[i] = val;
+        cached_time = 0;
     }
-    int &at(int index)
+    int &mut_ref(int index)
     {
+        cached_time = 0;
         return v[index];
-        // return v.at(index);
     }
     int operator[](int index) const
     {
-        // return v.at(index);
         return v[index];
     }
     size_t size() const
@@ -126,27 +128,25 @@ public:
     std::vector<int> to_order() const
     {
         std::vector<int> ord(size());
-        // assert(v.size() == 36);
         for (size_t i = 0; i < size(); ++i)
         {
-            //   if (!(v[i] >= 0 && v[i] < 36))
-            //     throw std::invalid_argument("Value for this is too large");
-            //   ord.at(v[i]) = i;
             ord[v[i]] = i;
         }
         return ord;
     }
-    const_iterator begin() const
-    {
-        return v.begin();
-    }
     iterator begin()
     {
+        cached_time = 0;
         return v.begin();
     }
     iterator end()
     {
+        cached_time = 0;
         return v.end();
+    }
+    const_iterator begin() const
+    {
+        return v.begin();
     }
     const_iterator end() const
     {
@@ -158,14 +158,14 @@ public:
         std::vector<int> vec = v;
         return vec;
     }
-    float consumed_time(const int *mat1, const int *mat2) const
+    float calc_consumed_time(const int *mat1, const int *mat2) const
     {
         // assert(v.size() == 36);
         if (v[0] != 0)
         {
             return 1e8;
         }
-        
+
         int time = 0;
         float nowx = 0, nowy = 0;
         float orientation = 0;
@@ -185,12 +185,12 @@ public:
         }
         return time;
     }
-    float consumed_time(const int *mat1, const int *mat2)
+    float consumed_time(const int *mat1, const int *mat2) const
     {
-        if(time)
-            return time;
+        if (cached_time)
+            return cached_time;
         const Solution &so = *this;
-        return time = so.consumed_time(mat1, mat2);
+        return cached_time = so.calc_consumed_time(mat1, mat2);
     }
 };
 
