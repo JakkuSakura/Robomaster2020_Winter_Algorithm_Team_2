@@ -2,7 +2,8 @@
 #define HYBRID_H
 #include <bits/stdc++.h>
 #include "../graph.h"
-
+#include "../thread_pool.h"
+// #include "../safe_ptr.h"
 namespace Hybrid
 {
 #include "a_star.h"
@@ -13,15 +14,18 @@ inline bool random(double p)
 }
 using A_Star::State;
 typedef std::vector<int> solution;
-#define show_line_num() std::cerr << __LINE__ << std::endl
-#define show_vector(x)                             \
-  std::cerr << #x " at line " << __LINE__ << ": "; \
-  for (auto &&i : x)                               \
-  {                                                \
-    std::cerr << i << ", ";                        \
-  }                                                \
-  std::cerr << std::endl
-
+#define show_line_num() //std::cerr << __LINE__ << std::endl
+#define show_vector(x) show_vector_2(x, __LINE__, #x)
+template <typename T>
+inline void show_vector_2(T x, int line_number, const char *s)
+{
+  std::cerr << s << " at line " << line_number << " has " << x.size() << " children: ";
+  for (auto &&i : x)
+  {
+    std::cerr << i << ", ";
+  }
+  std::cerr << std::endl;
+}
 class Graph
 {
   size_t max_species_population = 50;
@@ -29,7 +33,7 @@ class Graph
 
   float same_speices_distance_threshold = 370;
 
-  int generation_number = 1000;
+  int generation_number = 10;
 
   double inherit_probability = 1;
   double swap_probability = 1;
@@ -94,21 +98,20 @@ public:
       non_elite_average_fitness += fits2[i];
     }
     non_elite_average_fitness /= speices.size();
-    
-    
+
     float projected_non_elite_species_population = std::max(0.01f, non_elite_average_fitness * (speices.size() - elite_protection_number_per_species));
 
-    float adj = (max_species_population - elite_protection_number_per_species) /  projected_non_elite_species_population;
-    
+    float adj = (max_species_population - elite_protection_number_per_species) / projected_non_elite_species_population;
+
     // ind * adj = adjusted_expect_survial_probability
     for (size_t i = 0; i < fits.size(); i++)
     {
-      if(i < elite_protection_number_per_species)
+      if (i < elite_protection_number_per_species)
         fits[i] = 1;
       else
         fits[i] *= adj;
     }
-    
+
     return fits;
   }
   float consumed_time(const solution &result)
@@ -186,19 +189,17 @@ public:
   }
   std::vector<std::vector<solution>> divide_species(std::vector<std::vector<solution>> &population, std::vector<solution> solutions)
   {
-    for (solution &s : solutions)
+    for (size_t i = 0; i < solutions.size(); ++i)
     {
-
       bool found = false;
       for (std::vector<solution> &speices : population)
       {
         if (speices.size())
         {
-          float distance = genetic_distance(s, speices[0]);
+          float distance = genetic_distance(solutions[i], speices[0]);
           if (distance < same_speices_distance_threshold)
           {
-
-            speices.push_back(s);
+            speices.push_back(solutions[i]);
             found = true;
 
             break;
@@ -209,7 +210,7 @@ public:
       {
 
         std::vector<solution> species;
-        species.push_back(s);
+        species.push_back(solutions[i]);
         population.push_back(species);
       }
     }
@@ -217,6 +218,8 @@ public:
   }
   std::vector<solution> crossover(const solution &s1, const solution &s2)
   {
+    // if(s1.size() != s2.size())
+    //   fprintf(stderr, "%lu vs %lu\n", s1.size(), s2.size());
     assert(s1.size() == s2.size());
     std::vector<solution> solutions;
     { // PMX
@@ -261,95 +264,102 @@ public:
     std::vector<std::vector<solution>> population, next_population;
     divide_species(population, gen);
 
-    std::cout << "Generation " << 0 << " ended with " << gen.size() << " solutions in " << population.size() << " species, and the best solution comsumes " << consumed_time(pick_best(population)) << " units" << std::endl;
+    std::cout << "Generation " << 0 << " ended up with " << gen.size() << " solutions in " << population.size() << " species, and the best solution comsumes " << consumed_time(pick_best(population)) << " units" << std::endl;
 
-    std::vector<solution> next_gen;
+    ThreadPool pool(4);
     for (int i = 1; i <= generation_number; ++i)
     {
+      std::vector<std::future<std::vector<solution>>> next_gen_pool;
       // new solutions
-      for (auto &&species : population)
+      for (const std::vector<solution> &species : population)
       {
+        auto work = [&]() {
+          std::vector<solution> next_gen;
 
-        std::sort(species.begin(), species.end(),
-                  [&, this](const solution &s1, const solution &s2) {
-                    return consumed_time(s1) < consumed_time(s2);
-                  });
-
-        for (size_t i = 0; i < species.size(); i++)
-        {
-          const solution &solu = species[i];
-          assert(solu.size() > 0);
-          // inherit
-          if (random(inherit_probability))
+          for (const solution &solu : species)
           {
-            next_gen.push_back(solu);
-          }
-
-          // mutations
-          if (random(swap_probability))
-          {
-            solution s = solu;
-            int a = rand() % s.size(), b = rand() % s.size();
-            std::swap(s[a], s[b]);
-            next_gen.push_back(s);
-          }
-
-          if (random(reverse_probability))
-          {
-            solution s = solu;
-            int a = rand() % s.size(), b = rand() % s.size();
-            if (a > b)
-              std::swap(a, b);
-            std::reverse(s.begin() + a, s.begin() + (b + 1));
-            next_gen.push_back(s);
-          }
-
-          if (random(shuffle_probability))
-          {
-            solution s = solu;
-            int a = rand() % s.size(), b = rand() % s.size();
-            if (a > b)
-              std::swap(a, b);
-            std::random_shuffle(s.begin() + a, s.begin() + (b + 1), [](int x) { return rand() % x; });
-            next_gen.push_back(s);
-          }
-
-          // if (random(transform_probabilty))
-          // {
-          // int a = rand() % solu.size(), b = rand() % solu.size(), c = rand() % solu.size();
-          // not gonna implement it yet
-          // }
-
-          // crossover
-          if (random(crossover_within_species_probability))
-          {
-            assert(species.size() > 0);
-            solution s2 = species[rand() % species.size()];
-            auto &&children = crossover(solu, s2);
-            for (auto &&child : children)
+            assert(solu.size() > 0);
+            // inherit
+            if (random(inherit_probability))
             {
-              next_gen.push_back(child);
+              next_gen.push_back(solu);
+            }
+
+            // mutations
+            if (random(swap_probability))
+            {
+              solution s = solu;
+              int a = rand() % s.size(), b = rand() % s.size();
+              std::swap(s[a], s[b]);
+              assert(s.size() > 0);
+              next_gen.push_back(s);
+            }
+
+            if (random(reverse_probability))
+            {
+              solution s = solu;
+              int a = rand() % s.size(), b = rand() % s.size();
+              if (a > b)
+                std::swap(a, b);
+              std::reverse(s.begin() + a, s.begin() + (b + 1));
+              assert(s.size() > 0);
+              next_gen.push_back(s);
+            }
+
+            if (random(shuffle_probability))
+            {
+              solution s = solu;
+              int a = rand() % s.size(), b = rand() % s.size();
+              if (a > b)
+                std::swap(a, b);
+              std::random_shuffle(s.begin() + a, s.begin() + (b + 1), [](int x) { return rand() % x; });
+              assert(s.size() > 0);
+              next_gen.push_back(s);
+            }
+
+            // if (random(transform_probabilty))
+            // {
+            // int a = rand() % solu.size(), b = rand() % solu.size(), c = rand() % solu.size();
+            // not gonna implement it yet
+            // }
+
+            // crossover
+            if (random(crossover_within_species_probability))
+            {
+              assert(species.size() > 0);
+              solution s2 = species[rand() % species.size()];
+              auto &&children = crossover(solu, s2);
+              for (auto &&child : children)
+              {
+                assert(child.size());
+                next_gen.push_back(child);
+              }
+            }
+
+            if (random(crossover_over_species_probability))
+            {
+              assert(population.size() > 0);
+              std::vector<solution> &species2 = population[rand() % population.size()];
+              assert(species2.size() > 0);
+              const solution &s2 = species2[rand() % species2.size()];
+              assert(s2.size() > 0);
+              auto &&children = crossover(solu, s2);
+              for (auto &&child : children)
+              {
+                assert(child.size() > 0);
+                next_gen.push_back(child);
+              }
             }
           }
+          return next_gen;
+        };
 
-          if (random(crossover_over_species_probability))
-          {
-            assert(population.size() > 0);
-            auto &&species2 = population[rand() % population.size()];
-            assert(species2.size() > 0);
-            solution s2 = species2[rand() % species2.size()];
-            auto &&children = crossover(solu, s2);
-            for (auto &&child : children)
-            {
-              next_gen.push_back(child);
-            }
-          }
-        }
+        next_gen_pool.push_back(pool.enqueue(work));
       }
 
-      divide_species(next_population, next_gen);
+      for (auto &&future : next_gen_pool)
+        divide_species(next_population, future.get());
 
-      next_gen.clear();
       population.clear();
 
       for (auto &&species : next_population)
@@ -373,7 +383,7 @@ public:
       int count = 0;
       for (auto &&species : population)
         count += species.size();
-      std::cout << "Generation " << i << " ended with " << count << " solutions in " << population.size() << " species, and the best solution comsumes " << consumed_time(pick_best(population)) << " units" << std::endl;
+      std::cout << "Generation " << i << " ended up with " << count << " solutions in " << population.size() << " species, and the best solution comsumes " << consumed_time(pick_best(population)) << " units" << std::endl;
     }
 
     return pick_best(population);
@@ -386,7 +396,6 @@ public:
         if (consumed_time(sol) < consumed_time(best))
           best = sol;
     return best;
-
   }
 };
 } // namespace Hybrid
