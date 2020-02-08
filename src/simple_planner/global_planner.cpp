@@ -29,8 +29,10 @@
 #include "utility.h"
 #include <bitset>
 #include <algorithm>
+#include <fstream>
 #include "graph.h"
-#include "calculators/random.h"
+#include "../config.h"
+
 namespace robomaster
 {
 
@@ -75,12 +77,14 @@ private:
     path.header.stamp = ros::Time::now();
     path.header.frame_id = global_frame_;
 
-    std::cout << "Calculated path: ";
+#ifdef GENERATE_DATA
+    std::ofstream output("run.dat", std::ios::app);
     for (size_t i = 0; i < 36; i++)
     {
-      std::cout << best[i] << " ";
+      output << best[i] << " ";
     }
-    std::cout << std::endl;
+    output << std::endl;
+#endif
 
     for (size_t i = 0; i < 36; i++)
     {

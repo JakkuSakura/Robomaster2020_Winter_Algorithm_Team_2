@@ -7,8 +7,9 @@
 #include <std_msgs/Int16MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
 #include "tf/transform_listener.h"
-
-#define FIXED_VALUES
+#include <fstream>
+#include "../config.h"
+#include "../qt_tool/testdata.h"
 bool GetGlobalRobotPose(const std::shared_ptr<tf::TransformListener>& tf_listener,
                         const std::string& target_frame,
                         geometry_msgs::PoseStamped& robot_global_pose){
@@ -44,9 +45,8 @@ int main(int argc, char **argv)
     points.data.reserve(36);
 
     #ifdef FIXED_VALUES
-        #include "../qt_tool/testdata.h"
         for(int i = 0; i < 36; i++){
-            points.data.push_back(mat2[i]);
+            points.data.push_back(get_mat2()[i]);
         }
     #elif
         for(int i = 0; i < 36; i++){
@@ -153,7 +153,13 @@ int main(int argc, char **argv)
         number_pub.publish(number_array);
         random_pub.publish(points);
         if (pair.size() == 36){
-            std::cout<<"Finish: "<< ros::Time::now() - start<<" secs"<<std::endl;
+            auto dur = ros::Time::now() - start;
+            std::cout<<"Finish: "<< dur <<" secs"<<std::endl;
+#ifdef GENERATE_DATA
+            std::ofstream output("run.dat", std::ios::app);
+            output << dur << std::endl;
+            system("killall roscore");
+#endif
             ros::shutdown();
         }
         rate.sleep();

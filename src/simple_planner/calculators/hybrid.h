@@ -499,14 +499,14 @@ public:
   }
 };
 } // namespace Hybrid
-std::vector<int> calculate_path(const int *mat1, const int *mat2)
+inline std::vector<int> calculate_path(const int *mat1, const int *mat2)
 {
   using namespace Hybrid;
 
   Graph graph(mat1, mat2);
   auto results = graph.initial_generation();
   Solution best = graph.evolve(results);
-  ::show_debug_data(mat1, mat2, best);
+  show_debug_data(mat1, mat2, best);
   return best.unwrap();
 }
 

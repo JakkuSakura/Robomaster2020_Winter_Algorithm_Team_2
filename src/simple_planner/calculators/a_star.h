@@ -96,18 +96,13 @@ public:
 };
 } // namespace A_Star
 
-std::vector<int> calculate_path(const int *mat1, const int *mat2)
+inline std::vector<int> calculate_path(const int *mat1, const int *mat2)
 {
     using namespace A_Star;
     Graph graph(mat1, mat2);
     State best = graph.calc(State());
-    Solution s;
-    for (size_t i = 0; i < 36; i++)
-    {
-        s.set(i, best.path[i]);
-    }
-    
-    show_debug_data(mat1, mat2, s);
+
+    show_debug_data(mat1, mat2, best.path);
     return best.path;
 }
 
