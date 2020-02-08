@@ -152,6 +152,16 @@ int main(int argc, char **argv)
         }
         number_pub.publish(number_array);
         random_pub.publish(points);
+#ifdef GENERATE_DATA
+        if(ros::Time::now() - start > ros::Duration(TIME_LIMIT))
+        {
+            std::ofstream output(data_filename, std::ios::app);
+            output << "OUT" << std::endl;
+            output.close();
+
+            system("killall rosmaster");
+        }
+#endif        
         if (pair.size() == 36){
             auto dur = ros::Time::now() - start;
             std::cout<<"Finish: "<< dur <<" secs"<<std::endl;
