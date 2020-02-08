@@ -22,52 +22,13 @@ class Graph
 {
     const int *id1_, *id2_;
 
-protected:
-    float dist(float x1, float y1, float x2, float y2)
-    {
-        return sqrt(p2(x1 - x2) + p2(y1 - y2));
-    }
-
-    float distance_in_degree(float alpha, float beta)
-    {
-        float phi = abs(beta - alpha);
-        while (phi > 360)
-            phi -= 360;
-        float distance = phi > 180 ? 360 - phi : phi;
-        return distance;
-    }
-    float p2(float x)
-    {
-        return x * x;
-    }
-
 public:
     Graph(const int *id1, const int *id2)
     {
         id1_ = id1;
         id2_ = id2;
     }
-    float consumed_time(std::vector<int> result)
-    {
-        float g = 0;
-        float nowx = 0, nowy = 0;
-        float orientation = 0;
-        for (int point : result)
-        {
-            float midx, midy;
-            lookup(id1_, id2_, point, midx, midy);
-
-            float endx, endy;
-            lookup(id1_, id2_, pair(point), endx, endy);
-
-            float mid_orientation = atan2f(midy - nowy, midx - nowx) * 180 / M_PI;
-            float next_orientation = atan2f(endy - midy, endx - midx) * 180 / M_PI;
-
-            g += 10 * dist(midx, midy, nowx, nowy) + distance_in_degree(orientation, mid_orientation) / 180.0 * 40 + distance_in_degree(mid_orientation, next_orientation) / 180.0 * 40;
-            nowx = endx, nowy = endy, orientation = next_orientation;
-        }
-        return g;
-    }
+    
     State calc(State start)
     {
         std::priority_queue<State> que;
@@ -105,17 +66,6 @@ public:
                 lookup(id1_, id2_, p2, x2, y2);
                 return dist(x1, y1, s.x, s.y) < dist(x2, y2, s.x, s.y);
             });
-            // static int count = 0;
-            // if (++count < 100)
-            // {
-            //     std::cout << "(" << s.x << ", " << s.y << ") ranked ";
-            //     for (size_t i = 0; i < 36; i++)
-            //     {
-            //         std::cout << rank[i] << " ";
-            //     }
-            //     std::cout << std::endl;
-            // }
-
             int cnt = 0;
             for (size_t j = 0; j < 36 && cnt < 10; j++)
             {
@@ -146,29 +96,18 @@ public:
 };
 } // namespace A_Star
 
-
-void show_debug_data(const int *mat1, const int *mat2, std::vector<int> result)
-{
-    using namespace A_Star;
-
-    std::cout << "Result: ";
-    for (int i = 0; i < 36; i++)
-    {
-        std::cout << result[i] << " ";
-    }
-    std::cout << std::endl;
-    Graph graph(mat1, mat2);
-    std::cout << "Time: " << graph.consumed_time(result) << std::endl;
-}
-
 std::vector<int> calculate_path(const int *mat1, const int *mat2)
 {
     using namespace A_Star;
-    srand(time(0));
-    State s;
     Graph graph(mat1, mat2);
-    State best = graph.calc(s);
-    show_debug_data(mat1, mat2, best.path);
+    State best = graph.calc(State());
+    Solution s;
+    for (size_t i = 0; i < 36; i++)
+    {
+        s.set(i, best.path[i]);
+    }
+    
+    show_debug_data(mat1, mat2, s);
     return best.path;
 }
 

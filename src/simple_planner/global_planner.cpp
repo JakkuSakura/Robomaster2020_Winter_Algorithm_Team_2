@@ -30,7 +30,7 @@
 #include <bitset>
 #include <algorithm>
 #include "graph.h"
-#include "calculators/a_star.h"
+#include "calculators/random.h"
 namespace robomaster
 {
 

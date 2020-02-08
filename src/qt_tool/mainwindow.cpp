@@ -26,7 +26,6 @@ void MainWindow::keyPressEvent(QKeyEvent *ev)
     switch (ev->key())
     {
     case Qt::Key_R:
-        std::cout << "Re-run" << std::endl;
         result.clear();
         repaint(rect());
         init();
