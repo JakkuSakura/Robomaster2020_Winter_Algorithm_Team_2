@@ -83,7 +83,9 @@ private:
     {
       output << best[i] << " ";
     }
-    output << std::endl;
+    output << std::endl; 
+    output.close();
+
 #endif
 
     for (size_t i = 0; i < 36; i++)

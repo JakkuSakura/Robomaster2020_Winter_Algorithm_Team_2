@@ -158,6 +158,8 @@ int main(int argc, char **argv)
 #ifdef GENERATE_DATA
             std::ofstream output(data_filename, std::ios::app);
             output << dur << std::endl;
+            output.close();
+
             system("killall rosmaster");
 #endif
             ros::shutdown();
