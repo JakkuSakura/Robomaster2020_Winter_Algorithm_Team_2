@@ -1,9 +1,10 @@
 #if !defined(HYBRID_H)
 #define HYBRID_H
+#define NDEBUG
 #include <bits/stdc++.h>
 #include "../graph.h"
 #include "../thread_pool.h"
-// #include "../safe_ptr.h"
+
 namespace Hybrid
 {
 #include "a_star.h"
@@ -109,6 +110,7 @@ class Graph
   float same_speices_distance_threshold = 10;
 
   int generation_number = 200;
+  int thread_number = 4;
 
   double inherit_probability = 1;
   double swap_probability = 1;
@@ -146,6 +148,7 @@ public:
     assert(speices.size() > 0);
     std::vector<float> scores;
     std::vector<float> fits;
+
     float average_time = 0;
     for (auto &&so : speices)
     {
@@ -187,6 +190,7 @@ public:
   }
   float consumed_time(const Solution &result)
   {
+    assert(result.size() == 36);
     if (result[0] != 0)
     {
       return 1e8;
@@ -352,16 +356,125 @@ public:
       count += pair.second.size();
     return count;
   }
+  void mutate(const Solution &solu, Species &next_gen)
+  {
+    // inherit
+    if (random(inherit_probability))
+    {
+      next_gen.push_back(solu);
+    }
+
+    // mutations
+    if (random(swap_probability))
+    {
+      Solution s = solu;
+      int a = rand() % s.size(), b = rand() % s.size();
+      std::swap(s[a], s[b]);
+      assert(s.size() > 0);
+      next_gen.push_back(s);
+    }
+    if (random(reverse_probability))
+    {
+      Solution s = solu;
+      int a = rand() % s.size(), b = rand() % s.size();
+      if (a > b)
+        std::swap(a, b);
+      std::reverse(s.begin() + a, s.begin() + (b + 1));
+      assert(s.size() > 0);
+      next_gen.push_back(s);
+    }
+    if (random(shuffle_probability))
+    {
+      Solution s = solu;
+      int a = rand() % s.size(), b = rand() % s.size();
+      if (a > b)
+        std::swap(a, b);
+      std::random_shuffle(s.begin() + a, s.begin() + (b + 1), [](int x) { return rand() % x; });
+      assert(s.size() > 0);
+      next_gen.push_back(s);
+    }
+
+    // if (random(transform_probabilty))
+    // {
+    // int a = rand() % solu.size(), b = rand() % solu.size(), c = rand() % solu.size();
+    // not gonna implement it yet
+    // }
+  }
+  void crossover(const Solution &solu, const Species &now_species, Species &next_gen, const Population &population)
+  {
+    // crossover
+    if (random(crossover_within_species_probability))
+    {
+      assert(now_species.size() > 0);
+      Solution s2 = now_species[rand() % now_species.size()];
+      auto &&children = crossover(solu, s2);
+      for (auto &&child : children)
+      {
+        assert(child.size());
+        next_gen.push_back(child);
+      }
+    }
+
+    if (random(crossover_over_species_probability))
+    {
+      assert(population.size() > 0);
+      auto item = population.begin();
+      std::advance(item, rand() % population.size());
+      const auto &species2 = item->second;
+      assert(species2.size() > 0);
+      const Solution &s2 = species2[rand() % species2.size()];
+      assert(s2.size() > 0);
+      auto &&children = crossover(solu, s2);
+      for (auto &&child : children)
+      {
+        assert(child.size() > 0);
+        next_gen.push_back(child);
+      }
+    }
+  }
+  Population select(const Population &population)
+  {
+    Population temp_pop = population;
+
+    for (auto &&pair : temp_pop)
+    {
+      auto &&species = pair.second;
+      assert(species.size() > 0);
+      // population must be sorted to keep the elite alive
+      if (species.size() > elite_protection_number_per_species)
+        species.erase(species.begin() + elite_protection_number_per_species, species.end());
+      assert(species.size() <= elite_protection_number_per_species);
+    }
+
+    assert(count_population(temp_pop) > 0);
+
+    for (auto &&pair : population)
+    {
+      auto &&species = pair.second;
+      assert(species.size() > 0);
+
+      auto fits = fitness(species);
+
+      for (size_t i = 0; i < species.size(); i++)
+      {
+        if (random(fits[i]))
+        {
+          temp_pop[species.species_id].push_back(species[i]);
+        }
+      }
+    }
+
+    return temp_pop;
+  }
   Solution evolve(const Species &gen)
   {
 
     Population population;
     divide_species(population, gen);
-    assert(count_population(population) > 0);
 
     std::cerr << "Generation " << 0 << " ended up with " << gen.size() << " solutions in " << population.size() << " species, and the best Solution comsumes " << consumed_time(pick_best(population)) << " units" << std::endl;
 
-    ThreadPool pool(1);
+    ThreadPool pool(thread_number);
     for (int i = 1; i <= generation_number; ++i)
     {
       std::vector<std::future<Species>> next_gen_pool;
@@ -379,81 +492,10 @@ public:
           {
             assert(species.size() > 0);
             assert(solu.size() > 0);
-            // inherit
-            if (random(inherit_probability))
-            {
-              next_gen.push_back(solu);
-            }
-
-            // mutations
-            if (random(swap_probability))
-            {
-              Solution s = solu;
-              int a = rand() % s.size(), b = rand() % s.size();
-              std::swap(s[a], s[b]);
-              assert(s.size() > 0);
-              next_gen.push_back(s);
-            }
-            if (random(reverse_probability))
-            {
-              Solution s = solu;
-              int a = rand() % s.size(), b = rand() % s.size();
-              if (a > b)
-                std::swap(a, b);
-              std::reverse(s.begin() + a, s.begin() + (b + 1));
-              assert(s.size() > 0);
-              next_gen.push_back(s);
-            }
-            if (random(shuffle_probability))
-            {
-              Solution s = solu;
-              int a = rand() % s.size(), b = rand() % s.size();
-              if (a > b)
-                std::swap(a, b);
-              std::random_shuffle(s.begin() + a, s.begin() + (b + 1), [](int x) { return rand() % x; });
-              assert(s.size() > 0);
-              next_gen.push_back(s);
-            }
-
-            // if (random(transform_probabilty))
-            // {
-            // int a = rand() % solu.size(), b = rand() % solu.size(), c = rand() % solu.size();
-            // not gonna implement it yet
-            // }
-
-            // crossover
-
-            if (random(crossover_within_species_probability))
-            {
-              assert(species.size() > 0);
-              Solution s2 = species[rand() % species.size()];
-              auto &&children = crossover(solu, s2);
-              for (auto &&child : children)
-              {
-                assert(child.size());
-                next_gen.push_back(child);
-              }
-            }
-
-            if (random(crossover_over_species_probability))
-            {
-              assert(population.size() > 0);
-              auto item = population.begin();
-              std::advance(item, rand() % population.size());
-              const auto &species2 = item->second;
-              assert(species2.size() > 0);
-              const Solution &s2 = species2[rand() % species2.size()];
-              assert(s2.size() > 0);
-              auto &&children = crossover(solu, s2);
-              for (auto &&child : children)
-              {
-                assert(child.size() > 0);
-                next_gen.push_back(child);
-              }
-            }
+            mutate(solu, next_gen);
+            crossover(solu, species, next_gen, population);
+            assert(next_gen.size() > 0);
           }
-
-          assert(next_gen.size() > 0);
           return next_gen;
         };
 
@@ -468,49 +510,21 @@ public:
         divide_species(population, rest);
       }
 
-      for (auto &&species : population)
+      for (auto &&pair : population)
       {
-        pool.enqueue([&]() {
-          std::sort(species.second.begin(), species.second.end(),
+        auto &species = pair.second;
+        // FIXME add multi-thread support
+        // pool.enqueue([&]() {
+          std::sort(species.begin(), species.end(),
                     [&, this](const Solution &s1, const Solution &s2) {
                       return consumed_time(s1) < consumed_time(s2);
                     });
-        });
+        // });
       }
-      pool.join_all_tasks();
+      // pool.join_all_tasks();
+      show_line_num();
 
-      Population temp_pop = population;
-
-      for (auto &&pair : temp_pop)
-      {
-        auto &&species = pair.second;
-        assert(species.size() > 0);
-        // population must be sorted to keep the elite alive
-        if (species.size() > elite_protection_number_per_species)
-          species.erase(species.begin() + elite_protection_number_per_species, species.end());
-        assert(species.size() <= elite_protection_number_per_species);
-      }
-
-      assert(count_population(temp_pop) > 0);
-
-      for (auto &&pair : population)
-      {
-        auto &&species = pair.second;
-        assert(species.size() > 0);
-
-        auto fits = fitness(species);
-
-        for (size_t i = 0; i < species.size(); i++)
-        {
-          if (random(fits[i]))
-          {
-            temp_pop[species.species_id].push_back(species[i]);
-          }
-        }
-      }
-
-      population = temp_pop;
-      temp_pop.clear();
+      population = select(population);
 
       assert(population.size() > 0);
 
@@ -524,10 +538,12 @@ public:
     assert(population.size() > 0);
     assert(population.begin()->second.size() > 0);
     Solution best = population.begin()->second[0];
+
     for (auto &&species : population)
       for (auto &&sol : species.second)
         if (consumed_time(sol) < consumed_time(best))
           best = sol;
+
     return best;
   }
 };
