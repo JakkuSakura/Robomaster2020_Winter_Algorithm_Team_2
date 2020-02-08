@@ -1,9 +1,21 @@
 #if !defined(HYBRID_H)
 #define HYBRID_H
-#define NDEBUG
+
 #include <bits/stdc++.h>
 #include "../graph.h"
 #include "../thread_pool.h"
+#define show_line_num() std::cerr << __LINE__ << std::endl
+#define show_vector(x) __show_vector(x, __LINE__, #x)
+template <typename T>
+inline void __show_vector(T x, int line_number, const char *s)
+{
+  std::cerr << s << " at line " << line_number << " has " << x.size() << " children: ";
+  for (auto &&i : x)
+  {
+    std::cerr << i << ", ";
+  }
+  std::cerr << std::endl;
+}
 
 namespace Hybrid
 {
@@ -15,18 +27,82 @@ inline bool random(double p)
 }
 using A_Star::State;
 typedef std::vector<int> Solution;
-#define show_line_num() std::cerr << __LINE__ << std::endl
-#define show_vector(x) show_vector_2(x, __LINE__, #x)
-template <typename T>
-inline void show_vector_2(T x, int line_number, const char *s)
+
+float dist(float x1, float y1, float x2, float y2)
 {
-  std::cerr << s << " at line " << line_number << " has " << x.size() << " children: ";
-  for (auto &&i : x)
-  {
-    std::cerr << i << ", ";
-  }
-  std::cerr << std::endl;
+  return sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
 }
+
+float distance_in_degree(float alpha, float beta)
+{
+  float phi = abs(beta - alpha);
+  while (phi > 360)
+    phi -= 360;
+  float distance = phi > 180 ? 360 - phi : phi;
+  return distance;
+}
+float consumed_time(const int *mat1, const int *mat2, const Solution &result)
+{
+  assert(result.size() == 36);
+  if (result[0] != 0)
+  {
+    return 1e8;
+  }
+
+  float g = 0;
+  float nowx = 0, nowy = 0;
+  float orientation = 0;
+  for (int point : result)
+  {
+    float midx, midy;
+    lookup(mat1, mat2, point, midx, midy);
+
+    float endx, endy;
+    lookup(mat1, mat2, pair(point), endx, endy);
+
+    float mid_orientation = atan2f(midy - nowy, midx - nowx) * 180 / M_PI;
+    float next_orientation = atan2f(endy - midy, endx - midx) * 180 / M_PI;
+
+    g += 10 * dist(midx, midy, nowx, nowy) + distance_in_degree(orientation, mid_orientation) / 180.0 * 40 + distance_in_degree(mid_orientation, next_orientation) / 180.0 * 40;
+    nowx = endx, nowy = endy, orientation = next_orientation;
+  }
+  return g;
+}
+Solution to_solution(const std::vector<int> &order)
+{
+  Solution sol(order.size());
+  for (size_t i = 0; i < order.size(); ++i)
+  {
+    sol[order[i]] = i;
+  }
+  return sol;
+}
+std::vector<int> to_order(const Solution &a)
+{
+  std::vector<int> ord(a.size());
+  for (size_t i = 0; i < a.size(); ++i)
+  {
+    assert(a[i] >= 0 && a[i] < (int)a.size());
+
+    ord[a[i]] = i;
+  }
+  return ord;
+}
+
+float genetic_distance(const Solution &a, const Solution &b)
+{
+  assert(a.size() == b.size());
+  std::vector<int> a2 = to_order(a), b2 = to_order(b);
+
+  float dist = 0;
+  for (size_t i = 0; i < a.size(); i++)
+  {
+    dist += abs(a2[i] - b2[i]);
+  }
+
+  return dist / a.size();
+}
+class Graph;
 class Species
 {
   std::vector<Solution> solutions;
@@ -100,7 +176,15 @@ public:
     // return solutions.at(index);
     return solutions[index];
   }
+  void sort(const int *mat1, const int *mat2)
+  {
+    std::sort(solutions.begin(), solutions.end(),
+              [&, this](const Solution &s1, const Solution &s2) {
+                return consumed_time(mat1, mat2, s1) < consumed_time(mat1, mat2, s2);
+              });
+  }
 };
+
 typedef std::map<int, Species> Population;
 class Graph
 {
@@ -110,7 +194,7 @@ class Graph
   float same_speices_distance_threshold = 10;
 
   int generation_number = 200;
-  int thread_number = 4;
+  int thread_number = 2;
 
   double inherit_probability = 1;
   double swap_probability = 1;
@@ -122,22 +206,12 @@ class Graph
 
   const int *mat1, *mat2;
 
-protected:
-  float dist(float x1, float y1, float x2, float y2)
-  {
-    return sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
-  }
-
-  float distance_in_degree(float alpha, float beta)
-  {
-    float phi = abs(beta - alpha);
-    while (phi > 360)
-      phi -= 360;
-    float distance = phi > 180 ? 360 - phi : phi;
-    return distance;
-  }
-
 public:
+  float consumed_time(const Solution &result) const
+  {
+    return Hybrid::consumed_time(mat1, mat2, result);
+  }
+
   Graph(const int *id1, const int *id2)
   {
     mat1 = id1;
@@ -188,67 +262,7 @@ public:
 
     return fits;
   }
-  float consumed_time(const Solution &result)
-  {
-    assert(result.size() == 36);
-    if (result[0] != 0)
-    {
-      return 1e8;
-    }
 
-    float g = 0;
-    float nowx = 0, nowy = 0;
-    float orientation = 0;
-    for (int point : result)
-    {
-      float midx, midy;
-      lookup(mat1, mat2, point, midx, midy);
-
-      float endx, endy;
-      lookup(mat1, mat2, pair(point), endx, endy);
-
-      float mid_orientation = atan2f(midy - nowy, midx - nowx) * 180 / M_PI;
-      float next_orientation = atan2f(endy - midy, endx - midx) * 180 / M_PI;
-
-      g += 10 * dist(midx, midy, nowx, nowy) + distance_in_degree(orientation, mid_orientation) / 180.0 * 40 + distance_in_degree(mid_orientation, next_orientation) / 180.0 * 40;
-      nowx = endx, nowy = endy, orientation = next_orientation;
-    }
-    return g;
-  }
-  Solution to_solution(const std::vector<int> &order)
-  {
-    Solution sol(order.size());
-    for (size_t i = 0; i < order.size(); ++i)
-    {
-      sol[order[i]] = i;
-    }
-    return sol;
-  }
-  std::vector<int> to_order(const Solution &a)
-  {
-    std::vector<int> ord(a.size());
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-      assert(a[i] >= 0 && a[i] < (int)a.size());
-
-      ord[a[i]] = i;
-    }
-    return ord;
-  }
-
-  float genetic_distance(const Solution &a, const Solution &b)
-  {
-    assert(a.size() == b.size());
-    std::vector<int> a2 = to_order(a), b2 = to_order(b);
-
-    float dist = 0;
-    for (size_t i = 0; i < a.size(); i++)
-    {
-      dist += abs(a2[i] - b2[i]);
-    }
-
-    return dist / a.size();
-  }
   std::vector<Solution> initial_generation()
   {
     std::vector<Solution> results;
@@ -310,8 +324,6 @@ public:
   }
   std::vector<Solution> crossover(const Solution &s1, const Solution &s2)
   {
-    // if(s1.size() != s2.size())
-    //   fprintf(stderr, "%lu vs %lu\n", s1.size(), s2.size());
     assert(s1.size() == s2.size());
     std::vector<Solution> solutions;
     { // PMX
@@ -358,6 +370,7 @@ public:
   }
   void mutate(const Solution &solu, Species &next_gen)
   {
+    assert(solu.size() == 36);
     // inherit
     if (random(inherit_probability))
     {
@@ -468,7 +481,6 @@ public:
   }
   Solution evolve(const Species &gen)
   {
-
     Population population;
     divide_species(population, gen);
 
@@ -483,46 +495,38 @@ public:
       {
         auto work = [&]() {
           const Species &species = pair.second;
-          assert(species.species_id >= 0);
-          assert(species.size() > 0);
           Species next_gen;
           next_gen.species_id = species.species_id;
 
           for (const Solution &solu : species)
           {
-            assert(species.size() > 0);
-            assert(solu.size() > 0);
             mutate(solu, next_gen);
             crossover(solu, species, next_gen, population);
-            assert(next_gen.size() > 0);
           }
           return next_gen;
         };
-
         next_gen_pool.push_back(pool.enqueue(work));
       }
-      pool.join_all_tasks();
 
       for (size_t i = 0; i < next_gen_pool.size(); i++)
       {
         auto rest = next_gen_pool[i].get();
-        assert(rest.size() > 0);
         divide_species(population, rest);
       }
 
+      std::vector<std::future<void>> futures;
       for (auto &&pair : population)
       {
         auto &species = pair.second;
-        // FIXME add multi-thread support
-        // pool.enqueue([&]() {
-          std::sort(species.begin(), species.end(),
-                    [&, this](const Solution &s1, const Solution &s2) {
-                      return consumed_time(s1) < consumed_time(s2);
-                    });
-        // });
+        futures.push_back(pool.enqueue([&]() {
+          species.sort(mat1, mat2);
+        }));
       }
-      // pool.join_all_tasks();
-      show_line_num();
+      for (auto &&future : futures)
+      {
+        future.get();
+      }
+      
 
       population = select(population);
 
