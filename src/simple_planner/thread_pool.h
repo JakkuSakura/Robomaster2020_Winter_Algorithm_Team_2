@@ -10,6 +10,7 @@
 #include <future>
 #include <functional>
 #include <stdexcept>
+#include <ctime>
 
 class ThreadPool
 {
@@ -19,7 +20,7 @@ public:
     auto enqueue(F &&f, Args &&... args)
         -> std::future<typename std::result_of<F(Args...)>::type>;
     ~ThreadPool();
-
+    void join_all_tasks();
 private:
     void join_all_workers();
     // need to keep track of threads so we can join them
@@ -97,5 +98,11 @@ inline void ThreadPool::join_all_workers()
 {
     for (std::thread &worker : workers)
         worker.join();
+}
+inline void ThreadPool::join_all_tasks()
+{
+    while(tasks.size())
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    
 }
 #endif

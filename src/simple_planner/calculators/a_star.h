@@ -146,17 +146,7 @@ public:
 };
 } // namespace A_Star
 
-std::vector<int> calculate_path(const int *mat1, const int *mat2)
-{
-    using namespace A_Star;
-    srand(time(0));
-    State s;
-    Graph graph(mat1, mat2);
-    State best = graph.calc(s);
-    return best.path;
-}
 
-#define DEBUG_DATA_SHOWING_ENABLED
 void show_debug_data(const int *mat1, const int *mat2, std::vector<int> result)
 {
     using namespace A_Star;
@@ -170,5 +160,18 @@ void show_debug_data(const int *mat1, const int *mat2, std::vector<int> result)
     Graph graph(mat1, mat2);
     std::cout << "Time: " << graph.consumed_time(result) << std::endl;
 }
+
+std::vector<int> calculate_path(const int *mat1, const int *mat2)
+{
+    using namespace A_Star;
+    srand(time(0));
+    State s;
+    Graph graph(mat1, mat2);
+    State best = graph.calc(s);
+    show_debug_data(mat1, mat2, best.path);
+    return best.path;
+}
+
+
 
 #endif

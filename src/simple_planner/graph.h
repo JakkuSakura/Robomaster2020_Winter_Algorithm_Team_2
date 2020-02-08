@@ -1,7 +1,7 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 #include <vector>
-int pair(int x)
+inline int pair(int x)
 {
     if (x < 36)
     {
@@ -13,7 +13,7 @@ int pair(int x)
     }
 }
 // get the location from id and type
-void lookup(const int *id1_, const int *id2_, int id, float &x, float &y)
+inline void lookup(const int *id1_, const int *id2_, int id, float &x, float &y)
 {
     int type = id < 36 ? 1 : 2;
     int ans = 0;

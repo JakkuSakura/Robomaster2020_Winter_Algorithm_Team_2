@@ -3,9 +3,9 @@
 #include <qpainter.h>
 #include <stdio.h>
 #include <QKeyEvent>
-
-#include "../simple_planner/calculators/hybrid.h"
-
+#include <iostream>
+#include "../simple_planner/graph.h"
+std::vector<int> calculate_path(const int *, const int *);
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
@@ -20,12 +20,6 @@ void MainWindow::init()
 {
     std::cout << "Generating global path" << std::endl;
     result = calculate_path(mat1, mat2);
-
-#ifdef DEBUG_DATA_SHOWING_ENABLED
-    show_debug_data(mat1, mat2, result);
-#endif
-    
-    
 }
 void MainWindow::keyPressEvent(QKeyEvent *ev)
 {

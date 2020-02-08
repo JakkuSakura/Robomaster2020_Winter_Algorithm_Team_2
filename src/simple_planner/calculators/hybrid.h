@@ -10,11 +10,11 @@ namespace Hybrid
 
 inline bool random(double p)
 {
-  return 1.0 * rand() / RAND_MAX < p;
+  return 1.0 * rand() / RAND_MAX <= p;
 }
 using A_Star::State;
-typedef std::vector<int> solution;
-#define show_line_num() //std::cerr << __LINE__ << std::endl
+typedef std::vector<int> Solution;
+#define show_line_num() std::cerr << __LINE__ << std::endl
 #define show_vector(x) show_vector_2(x, __LINE__, #x)
 template <typename T>
 inline void show_vector_2(T x, int line_number, const char *s)
@@ -26,29 +26,104 @@ inline void show_vector_2(T x, int line_number, const char *s)
   }
   std::cerr << std::endl;
 }
+class Species
+{
+  std::vector<Solution> solutions;
+
+public:
+  static int get_id()
+  {
+    static int id = 0;
+    return ++id;
+  }
+  int species_id = -1;
+  Species() {}
+  Species(const std::vector<Solution> &s) : solutions(s)
+  {
+  }
+  Species(const Species &s) : solutions(s.solutions), species_id(s.species_id)
+  {
+  }
+  Species &operator=(const Species &s)
+  {
+    solutions = s.solutions;
+    species_id = s.species_id;
+    return *this;
+  }
+  void push_back(const Solution &s)
+  {
+    solutions.push_back(s);
+  }
+  void extend(const Species &s)
+  {
+    for (auto &&i : s)
+    {
+      solutions.push_back(i);
+    }
+  }
+  size_t size() const
+  {
+    return solutions.size();
+  }
+  void erase(std::vector<Solution>::iterator begin, std::vector<Solution>::iterator end)
+  {
+    solutions.erase(begin, end);
+  }
+  void clear()
+  {
+    solutions.clear();
+  }
+  std::vector<Solution>::iterator begin()
+  {
+    return solutions.begin();
+  }
+  std::vector<Solution>::iterator end()
+  {
+    return solutions.end();
+  }
+  std::vector<Solution>::const_iterator begin() const
+  {
+    return solutions.begin();
+  }
+  std::vector<Solution>::const_iterator end() const
+  {
+    return solutions.end();
+  }
+  Solution &operator[](int index)
+  {
+    // return solutions.at(index);
+    return solutions[index];
+  }
+  const Solution &operator[](int index) const
+  {
+    // return solutions.at(index);
+    return solutions[index];
+  }
+};
+typedef std::map<int, Species> Population;
 class Graph
 {
-  size_t max_species_population = 50;
-  size_t elite_protection_number_per_species = 3;
+  size_t max_species_population = 10;
+  size_t elite_protection_number_per_species = 2;
 
-  float same_speices_distance_threshold = 370;
+  float same_speices_distance_threshold = 10;
 
-  int generation_number = 10;
+  int generation_number = 200;
 
   double inherit_probability = 1;
   double swap_probability = 1;
   double reverse_probability = 1;
   double shuffle_probability = 1;
   double transform_probabilty = 1;
-  double crossover_within_species_probability = 1;
-  double crossover_over_species_probability = 1;
+  double crossover_within_species_probability = 0.5;
+  double crossover_over_species_probability = 0.01;
 
-  const int *id1_, *id2_;
+  const int *mat1, *mat2;
 
 protected:
   float dist(float x1, float y1, float x2, float y2)
   {
-    return sqrt(p2(x1 - x2) + p2(y1 - y2));
+    return sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
   }
 
   float distance_in_degree(float alpha, float beta)
@@ -59,18 +134,14 @@ protected:
     float distance = phi > 180 ? 360 - phi : phi;
     return distance;
   }
-  float p2(float x)
-  {
-    return x * x;
-  }
 
 public:
   Graph(const int *id1, const int *id2)
   {
-    id1_ = id1;
-    id2_ = id2;
+    mat1 = id1;
+    mat2 = id2;
   }
-  std::vector<float> fitness(const std::vector<solution> &speices)
+  std::vector<float> fitness(const Species &speices)
   {
     assert(speices.size() > 0);
     std::vector<float> scores;
@@ -107,25 +178,30 @@ public:
     for (size_t i = 0; i < fits.size(); i++)
     {
       if (i < elite_protection_number_per_species)
-        fits[i] = 1;
+        fits[i] = -1; // the fitest ones will survive later
       else
         fits[i] *= adj;
     }
 
     return fits;
   }
-  float consumed_time(const solution &result)
+  float consumed_time(const Solution &result)
   {
+    if (result[0] != 0)
+    {
+      return 1e8;
+    }
+
     float g = 0;
     float nowx = 0, nowy = 0;
     float orientation = 0;
     for (int point : result)
     {
       float midx, midy;
-      lookup(id1_, id2_, point, midx, midy);
+      lookup(mat1, mat2, point, midx, midy);
 
       float endx, endy;
-      lookup(id1_, id2_, pair(point), endx, endy);
+      lookup(mat1, mat2, pair(point), endx, endy);
 
       float mid_orientation = atan2f(midy - nowy, midx - nowx) * 180 / M_PI;
       float next_orientation = atan2f(endy - midy, endx - midx) * 180 / M_PI;
@@ -135,16 +211,16 @@ public:
     }
     return g;
   }
-  solution to_solution(const std::vector<int> &order)
+  Solution to_solution(const std::vector<int> &order)
   {
-    solution sol(order.size());
+    Solution sol(order.size());
     for (size_t i = 0; i < order.size(); ++i)
     {
       sol[order[i]] = i;
     }
     return sol;
   }
-  std::vector<int> to_order(const solution &a)
+  std::vector<int> to_order(const Solution &a)
   {
     std::vector<int> ord(a.size());
     for (size_t i = 0; i < a.size(); ++i)
@@ -156,7 +232,7 @@ public:
     return ord;
   }
 
-  float genetic_distance(const solution &a, const solution &b)
+  float genetic_distance(const Solution &a, const Solution &b)
   {
     assert(a.size() == b.size());
     std::vector<int> a2 = to_order(a), b2 = to_order(b);
@@ -167,17 +243,15 @@ public:
       dist += abs(a2[i] - b2[i]);
     }
 
-    return dist;
+    return dist / a.size();
   }
-  std::vector<solution> initial_generation()
+  std::vector<Solution> initial_generation()
   {
-    A_Star::Graph graph(id1_, id2_);
-    auto result = graph.calc(State());
-    std::vector<solution> results;
-    // results.push_back(result.path);
+    std::vector<Solution> results;
+    // results.push_back(A_Star::Graph(mat1, mat2).calc(State()).path);
     for (size_t i = 0; i < 100; i++)
     {
-      solution res;
+      Solution res;
       for (size_t i = 0; i < 36; i++)
       {
         res.push_back(i);
@@ -187,60 +261,74 @@ public:
     }
     return results;
   }
-  std::vector<std::vector<solution>> divide_species(std::vector<std::vector<solution>> &population, std::vector<solution> solutions)
+  Population &divide_species(Population &population, const Species &solutions)
   {
-    for (size_t i = 0; i < solutions.size(); ++i)
+    assert(solutions.size() > 0);
+    // assert(solutions.species_id <= 100);
+    for (auto &&sol : solutions)
     {
-      bool found = false;
-      for (std::vector<solution> &speices : population)
+      if (solutions.species_id >= 0 && population.find(solutions.species_id) != population.end())
       {
-        if (speices.size())
+        float distance = genetic_distance(sol, population[solutions.species_id][0]);
+        if (distance < same_speices_distance_threshold)
         {
-          float distance = genetic_distance(solutions[i], speices[0]);
-          if (distance < same_speices_distance_threshold)
-          {
-            speices.push_back(solutions[i]);
-            found = true;
-
-            break;
-          }
+          population[solutions.species_id].push_back(sol);
+          continue;
         }
       }
+
+      bool found = false;
+      for (auto &&pair : population)
+      {
+        auto &&speices = pair.second;
+        assert(speices.size() > 0);
+
+        float distance = genetic_distance(sol, speices[0]);
+        if (distance < same_speices_distance_threshold)
+        {
+          speices.push_back(sol);
+          found = true;
+          break;
+        }
+      }
+
       if (!found)
       {
+        Species species;
+        species.push_back(sol);
+        species.species_id = Species::get_id();
 
-        std::vector<solution> species;
-        species.push_back(solutions[i]);
-        population.push_back(species);
+        population[species.species_id] = species;
       }
     }
+
     return population;
   }
-  std::vector<solution> crossover(const solution &s1, const solution &s2)
+  std::vector<Solution> crossover(const Solution &s1, const Solution &s2)
   {
     // if(s1.size() != s2.size())
     //   fprintf(stderr, "%lu vs %lu\n", s1.size(), s2.size());
     assert(s1.size() == s2.size());
-    std::vector<solution> solutions;
+    std::vector<Solution> solutions;
     { // PMX
       int a = rand() % s1.size(), b = rand() % s1.size();
       if (a > b)
         std::swap(a, b);
 
-      solution child1(s1.size(), -1), child2(s2.size(), -1);
+      Solution child1(s1.size(), -1), child2(s2.size(), -1);
 
       for (int i = a; i <= b; ++i)
       {
         child1[i] = s2[i];
         child2[i] = s1[i];
       }
-      auto oper = [&](const solution &parent, solution &child) {
+      auto oper = [&](const Solution &parent, Solution &child) {
         for (int i = 0; i < (int)s1.size(); ++i)
         {
           if (a <= i && i <= b)
             continue;
           int now = parent[i];
-          solution::const_iterator iter;
+          Solution::const_iterator iter;
           while ((iter = std::find(child.begin(), child.end(), now), iter != child.end()))
           {
             int index = iter - child.begin();
@@ -257,27 +345,39 @@ public:
 
     return solutions;
   }
-
-  solution evolve(const std::vector<solution> gen)
+  int count_population(const Population &pop)
+  {
+    int count = 0;
+    for (auto &&pair : pop)
+      count += pair.second.size();
+    return count;
+  }
+  Solution evolve(const Species &gen)
   {
 
-    std::vector<std::vector<solution>> population, next_population;
+    Population population;
     divide_species(population, gen);
+    assert(count_population(population) > 0);
 
-    std::cout << "Generation " << 0 << " ended up with " << gen.size() << " solutions in " << population.size() << " species, and the best solution comsumes " << consumed_time(pick_best(population)) << " units" << std::endl;
+    std::cerr << "Generation " << 0 << " ended up with " << gen.size() << " solutions in " << population.size() << " species, and the best Solution comsumes " << consumed_time(pick_best(population)) << " units" << std::endl;
 
-    ThreadPool pool(4);
+    ThreadPool pool(1);
     for (int i = 1; i <= generation_number; ++i)
     {
-      std::vector<std::future<std::vector<solution>>> next_gen_pool;
+      std::vector<std::future<Species>> next_gen_pool;
       // new solutions
-      for (const std::vector<solution> &species : population)
+      for (const auto &pair : population)
       {
         auto work = [&]() {
-          std::vector<solution> next_gen;
+          const Species &species = pair.second;
+          assert(species.species_id >= 0);
+          assert(species.size() > 0);
+          Species next_gen;
+          next_gen.species_id = species.species_id;
 
-          for (const solution &solu : species)
+          for (const Solution &solu : species)
           {
+            assert(species.size() > 0);
             assert(solu.size() > 0);
             // inherit
             if (random(inherit_probability))
@@ -288,16 +388,15 @@ public:
             // mutations
             if (random(swap_probability))
             {
-              solution s = solu;
+              Solution s = solu;
               int a = rand() % s.size(), b = rand() % s.size();
               std::swap(s[a], s[b]);
               assert(s.size() > 0);
               next_gen.push_back(s);
             }
-
             if (random(reverse_probability))
             {
-              solution s = solu;
+              Solution s = solu;
               int a = rand() % s.size(), b = rand() % s.size();
               if (a > b)
                 std::swap(a, b);
@@ -305,10 +404,9 @@ public:
               assert(s.size() > 0);
               next_gen.push_back(s);
             }
-
             if (random(shuffle_probability))
             {
-              solution s = solu;
+              Solution s = solu;
               int a = rand() % s.size(), b = rand() % s.size();
               if (a > b)
                 std::swap(a, b);
@@ -324,10 +422,11 @@ public:
             // }
 
             // crossover
+
             if (random(crossover_within_species_probability))
             {
               assert(species.size() > 0);
-              solution s2 = species[rand() % species.size()];
+              Solution s2 = species[rand() % species.size()];
               auto &&children = crossover(solu, s2);
               for (auto &&child : children)
               {
@@ -339,9 +438,11 @@ public:
             if (random(crossover_over_species_probability))
             {
               assert(population.size() > 0);
-              std::vector<solution> &species2 = population[rand() % population.size()];
+              auto item = population.begin();
+              std::advance(item, rand() % population.size());
+              const auto &species2 = item->second;
               assert(species2.size() > 0);
-              const solution &s2 = species2[rand() % species2.size()];
+              const Solution &s2 = species2[rand() % species2.size()];
               assert(s2.size() > 0);
               auto &&children = crossover(solu, s2);
               for (auto &&child : children)
@@ -351,68 +452,87 @@ public:
               }
             }
           }
+
+          assert(next_gen.size() > 0);
           return next_gen;
         };
 
         next_gen_pool.push_back(pool.enqueue(work));
       }
+      pool.join_all_tasks();
 
-      for (auto &&future : next_gen_pool)
-        divide_species(next_population, future.get());
-
-      population.clear();
-
-      for (auto &&species : next_population)
+      for (size_t i = 0; i < next_gen_pool.size(); i++)
       {
-        std::vector<solution> spe;
+        auto rest = next_gen_pool[i].get();
+        assert(rest.size() > 0);
+        divide_species(population, rest);
+      }
+
+      for (auto &&species : population)
+      {
+        pool.enqueue([&]() {
+          std::sort(species.second.begin(), species.second.end(),
+                    [&, this](const Solution &s1, const Solution &s2) {
+                      return consumed_time(s1) < consumed_time(s2);
+                    });
+        });
+      }
+      pool.join_all_tasks();
+
+      Population temp_pop = population;
+
+      for (auto &&pair : temp_pop)
+      {
+        auto &&species = pair.second;
+        assert(species.size() > 0);
+        // population must be sorted to keep the elite alive
+        if (species.size() > elite_protection_number_per_species)
+          species.erase(species.begin() + elite_protection_number_per_species, species.end());
+        assert(species.size() <= elite_protection_number_per_species);
+      }
+
+      assert(count_population(temp_pop) > 0);
+
+      for (auto &&pair : population)
+      {
+        auto &&species = pair.second;
+        assert(species.size() > 0);
+
         auto fits = fitness(species);
 
         for (size_t i = 0; i < species.size(); i++)
         {
           if (random(fits[i]))
           {
-            spe.push_back(species[i]);
+            temp_pop[species.species_id].push_back(species[i]);
           }
         }
-        if (spe.size())
-          population.push_back(spe);
       }
-      next_population.clear();
+
+      population = temp_pop;
+      temp_pop.clear();
+
       assert(population.size() > 0);
 
-      int count = 0;
-      for (auto &&species : population)
-        count += species.size();
-      std::cout << "Generation " << i << " ended up with " << count << " solutions in " << population.size() << " species, and the best solution comsumes " << consumed_time(pick_best(population)) << " units" << std::endl;
+      std::cerr << "Generation " << i << " ended up with " << count_population(population) << " solutions in " << population.size() << " species, and the best Solution comsumes " << consumed_time(pick_best(population)) << " units" << std::endl;
     }
 
     return pick_best(population);
   }
-  solution pick_best(std::vector<std::vector<solution>> population)
+  Solution pick_best(Population population)
   {
-    solution best = population[0][0];
+    assert(population.size() > 0);
+    assert(population.begin()->second.size() > 0);
+    Solution best = population.begin()->second[0];
     for (auto &&species : population)
-      for (auto &&sol : species)
+      for (auto &&sol : species.second)
         if (consumed_time(sol) < consumed_time(best))
           best = sol;
     return best;
   }
 };
 } // namespace Hybrid
-
-Hybrid::solution calculate_path(const int *mat1, const int *mat2)
-{
-  using namespace Hybrid;
-  srand(time(0));
-  Graph graph(mat1, mat2);
-  auto results = graph.initial_generation();
-  solution best = graph.evolve(results);
-
-  return best;
-  // return results[rand() % results.size()];
-}
-#define DEBUG_DATA_SHOWING_ENABLED
-void show_debug_data(const int *mat1, const int *mat2, const Hybrid::solution &result)
+void show_debug_data(const int *mat1, const int *mat2, const Hybrid::Solution &result)
 {
   using namespace Hybrid;
 
@@ -424,5 +544,25 @@ void show_debug_data(const int *mat1, const int *mat2, const Hybrid::solution &r
   std::cout << std::endl;
   Graph graph(mat1, mat2);
   std::cout << "Predicted consumed time: " << graph.consumed_time(result) << std::endl;
+  std::cout << "Now species number id: " << Species::get_id() << std::endl;
 }
+struct AutoSrand
+{
+  AutoSrand()
+  {
+    srand(time(0));
+  }
+} auto_srand;
+Hybrid::Solution calculate_path(const int *mat1, const int *mat2)
+{
+  using namespace Hybrid;
+
+  Graph graph(mat1, mat2);
+  auto results = graph.initial_generation();
+  Solution best = graph.evolve(results);
+  ::show_debug_data(mat1, mat2, best);
+  return best;
+  // return results[rand() % results.size()];
+}
+
 #endif // HYBRID_H
