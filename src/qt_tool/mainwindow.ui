@@ -11,11 +11,11 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Qt Tool</string>
+   <string>Quick Visualization</string>
   </property>
-  <widget class="QWidget" name="centralwidget"/>
-  <widget class="QMenuBar" name="menubar"/>
-  <widget class="QStatusBar" name="statusbar"/>
+  <!-- <widget class="QWidget" name="centralwidget"/> -->
+  <!-- <widget class="QMenuBar" name="menubar"/> -->
+  <!-- <widget class="QStatusBar" name="statusbar"/> -->
  </widget>
  <resources/>
  <connections/>

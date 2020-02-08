@@ -19,7 +19,7 @@ public:
     void init();
     std::vector<int> result;
     const int *mat1, *mat2;
-
+    int step = 0;
 private:
     Ui::MainWindow *ui;
 };
