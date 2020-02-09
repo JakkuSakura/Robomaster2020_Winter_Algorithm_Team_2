@@ -4,7 +4,7 @@
 #define GENERATE_DATA
 const char *data_filename = "/home/jack/run.dat";
 
-const float TIME_LIMIT = 350; // secs
+const float TIME_LIMIT = 25; // secs
 
 // #define FIXED_VALUES
 
