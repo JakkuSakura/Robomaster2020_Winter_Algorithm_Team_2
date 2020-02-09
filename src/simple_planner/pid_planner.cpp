@@ -14,7 +14,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  ***************************************************************************/
-
+// FIXME cannot turn 180 degrees
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 
@@ -97,8 +97,9 @@ class PIDPlanner{
           }else{
           cmd_vel.angular.z = std::max(p_yaw_coeff_*diff_yaw, -max_yaw_speed_);
           }
-          cmd_vel.linear.x = 0;
-          cmd_vel.linear.y = 0;
+          // without stopping
+          // cmd_vel.linear.x = 0;
+          // cmd_vel.linear.y = 0;
         }
 
       } else{

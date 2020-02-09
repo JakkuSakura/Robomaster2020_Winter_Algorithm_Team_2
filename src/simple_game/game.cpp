@@ -7,6 +7,9 @@
 #include <std_msgs/Int16MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
 #include "tf/transform_listener.h"
+#include <fstream>
+#include "../config.h"
+#include "../qt_tool/testdata.h"
 bool GetGlobalRobotPose(const std::shared_ptr<tf::TransformListener>& tf_listener,
                         const std::string& target_frame,
                         geometry_msgs::PoseStamped& robot_global_pose){
@@ -35,18 +38,26 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "random_point");
     ros::NodeHandle nh;
-    ros::Publisher random_pub = nh.advertise<std_msgs::Int16MultiArray>("random_points",5);
-    ros::Publisher number_pub = nh.advertise<visualization_msgs::MarkerArray>("number", 10);
+    ros::Publisher random_pub = nh.advertise<std_msgs::Int16MultiArray>("blue_numbers",5);
+    ros::Publisher number_pub = nh.advertise<visualization_msgs::MarkerArray>("number_markers", 10);
     //random points
     std_msgs::Int16MultiArray points;
     points.data.reserve(36);
-    for(int i = 0; i < 36; i++){
-        points.data.push_back(i);
-    }
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::shuffle ( points.data.begin(), points.data.end(), gen );
 
+    #ifdef FIXED_VALUES
+        for(int i = 0; i < 36; i++){
+            points.data.push_back(get_mat2()[i]);
+        }
+    #elif
+        for(int i = 0; i < 36; i++){
+            points.data.push_back(i);
+        }
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::shuffle ( points.data.begin(), points.data.end(), gen );
+
+    #endif
+    
     //generate markers
     visualization_msgs::MarkerArray number_array;
     number_array.markers.resize(72);
@@ -110,7 +121,8 @@ int main(int argc, char **argv)
     int neighbor_index;
     ros::Time start;
     std::vector<int> pair;
-    ros::Rate rate(20);
+    sleep(10);
+    ros::Rate rate(30);
     while (ros::ok()){
         GetGlobalRobotPose(tf_listener,"map",robot_pose);
 
@@ -140,8 +152,26 @@ int main(int argc, char **argv)
         }
         number_pub.publish(number_array);
         random_pub.publish(points);
+#ifdef GENERATE_DATA
+        if(ros::Time::now() - start > ros::Duration(TIME_LIMIT))
+        {
+            std::ofstream output(data_filename, std::ios::app);
+            output << "OUT" << std::endl;
+            output.close();
+
+            system("killall rosmaster");
+        }
+#endif        
         if (pair.size() == 36){
-            std::cout<<"Finish: "<< ros::Time::now() - start<<" secs"<<std::endl;
+            auto dur = ros::Time::now() - start;
+            std::cout<<"Finish: "<< dur <<" secs"<<std::endl;
+#ifdef GENERATE_DATA
+            std::ofstream output(data_filename, std::ios::app);
+            output << dur << std::endl;
+            output.close();
+
+            system("killall rosmaster");
+#endif
             ros::shutdown();
         }
         rate.sleep();
