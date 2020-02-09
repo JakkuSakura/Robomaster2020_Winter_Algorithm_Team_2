@@ -4,30 +4,7 @@
 #include <bits/stdc++.h>
 #include "../graph.h"
 #include "../thread_pool.h"
-
-#define show_line_num() std::cerr << "thread " << std::this_thread::get_id() << " at " << __LINE__ << std::endl
-#define CHECK(x)                   \
-  try                              \
-  {                                \
-    (x).check();                   \
-  }                                \
-  catch (const std::exception &e)  \
-  {                                \
-    std::cerr << e.what() << '\n'; \
-    show_line_num();               \
-    abort();                       \
-  }
-#define show_vector(x) __show_vector(x, __LINE__, #x)
-template <typename T>
-inline void __show_vector(T x, int line_number, const char *s)
-{
-  std::cerr << s << " at line " << line_number << " has " << x.size() << " children: ";
-  for (auto &&i : x)
-  {
-    std::cerr << i << ", ";
-  }
-  std::cerr << std::endl;
-}
+#include "../debug_utils.h"
 
 namespace Hybrid
 {
@@ -130,7 +107,7 @@ class Graph
 
   float same_speices_distance_threshold = 10;
 
-  int generation_number = 100;
+  int generation_number = 30;
   int thread_number = 4;
 
   double inherit_probability = 0.03;
