@@ -81,7 +81,7 @@ private:
             // 1. Update the transform from global path frame to local planner frame
             UpdateTransform(tf_listener_, global_frame_,
                             global_path_.header.frame_id, global_path_.header.stamp,
-                            global2path_transform_); //source_time needs decided
+                            path2global_transform_); //source_time needs decided
 
             // 2. Get current robot pose in global path frame
             geometry_msgs::PoseStamped robot_pose;
@@ -112,12 +112,12 @@ private:
             geometry_msgs::PoseStamped tmp_pose;
             tmp_pose.header.frame_id = global_frame_;
 
-            TransformPose(global2path_transform_, robot_pose, tmp_pose);
+            TransformPose(path2global_transform_, robot_pose, tmp_pose);
             prune_path.poses.push_back(tmp_pose);
 
             for (int i = prune_index_; i < global_path_.poses.size(); i++)
             {
-                TransformPose(global2path_transform_, global_path_.poses[i], tmp_pose);
+                TransformPose(path2global_transform_, global_path_.poses[i], tmp_pose);
                 prune_path.poses.push_back(tmp_pose);
             }
 
@@ -201,7 +201,7 @@ private:
 
     ros::NodeHandle nh;
     std::shared_ptr<tf::TransformListener> tf_listener_;
-    tf::StampedTransform global2path_transform_;
+    tf::StampedTransform path2global_transform_;
 
     std::string global_frame_;
     ros::Timer plan_timer_;

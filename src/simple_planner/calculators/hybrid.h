@@ -107,7 +107,7 @@ class Graph
 
   float same_speices_distance_threshold = 10;
 
-  int generation_number = 30;
+  int generation_number = 100;
   int thread_number = 4;
 
   double inherit_probability = 0.03;
@@ -180,7 +180,7 @@ public:
   std::vector<Solution> initial_generation()
   {
     std::vector<Solution> results;
-    // results.push_back(A_Star::Graph(mat1, mat2).calc(A_Star::State()).path);
+    results.push_back(A_Star::Graph(mat1, mat2).calc(A_Star::State()).path);
     for (size_t i = 0; i < 100; i++)
     {
       Solution res;
