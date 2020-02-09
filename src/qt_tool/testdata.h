@@ -15,23 +15,8 @@ inline int const *get_mat1()
     return mat1;
 }
 
-#ifndef FIXED_VALUES
-
 #include <ctime>
 #include <cstdlib>
-namespace AutoSrand
-{
-struct auto_srand
-{
-    auto_srand()
-    {
-        srand(time(0));
-    }
-};
-
-} // namespace AutoSrand
-
-#endif
 
 inline int const *get_mat2()
 {
@@ -48,6 +33,7 @@ inline int const *get_mat2()
     if (!shuffled)
     {
         shuffled = true;
+        srand(time(0));
         std::random_shuffle(mat2, mat2 + 36);
     }
 #endif
