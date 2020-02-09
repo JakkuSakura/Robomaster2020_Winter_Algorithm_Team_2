@@ -18,11 +18,15 @@ catkin_package()
 
 include_directories(${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
 
-add_executable(local_planner local_planner.cpp)
-target_link_libraries(local_planner ${catkin_LIBRARIES})
 
 add_executable(global_planner global_planner.cpp)
 target_link_libraries(global_planner ${catkin_LIBRARIES})
+
+add_executable(my_planner my_planner.cpp)
+target_link_libraries(my_planner ${catkin_LIBRARIES})
+
+add_executable(local_planner local_planner.cpp)
+target_link_libraries(local_planner ${catkin_LIBRARIES})
 
 add_executable(pid_planner pid_planner.cpp)
 target_link_libraries(pid_planner ${catkin_LIBRARIES})

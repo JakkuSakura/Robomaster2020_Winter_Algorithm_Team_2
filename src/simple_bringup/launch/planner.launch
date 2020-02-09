@@ -9,7 +9,7 @@
     </node>
 
     <!-- Run the local trajectory planner -->
-    <node pkg="simple_planner" type="local_planner" name="local_planner" respawn="true" output="screen" >
+    <!-- <node pkg="simple_planner" type="local_planner" name="local_planner" respawn="true" output="screen" >
         <param name="global_frame" value="odom"/>
         <param name="plan_frequency" value="50"/>
         <param name="max_speed" value="2"/>
@@ -17,10 +17,10 @@
         <param name="p_coeff" value="2"/>
         <param name="goal_tolerance" value="0.05"/>
         <param name="prune_ahead_distance" value="0.14"/>
-    </node>
+    </node> -->
 
     <!-- Run the pid controller for goal position and angle -->
-    <node pkg="simple_planner" type="pid_planner" name="pid_planner" respawn="true" output="screen" >
+    <!-- <node pkg="simple_planner" type="pid_planner" name="pid_planner" respawn="true" output="screen" >
         <param name="max_x_speed" value="2"/>
         <param name="max_y_speed" value="2"/>
         <param name="max_yaw_speed" value="3.0"/>
@@ -30,6 +30,18 @@
         <param name="plan_frequency" value="30"/>
         <param name="goal_dist_tolerance" value="0.08"/>
         <param name="goal_angle_tolerance" value="0.05"/>
+    </node> -->
+
+    
+    <!-- Run the modified local planner -->
+    <node pkg="simple_planner" type="my_planner" name="my_planner" respawn="true" output="screen" >
+        <param name="global_frame" value="odom"/>
+        <param name="plan_frequency" value="50"/>
+        <param name="max_speed" value="2"/>
+        <param name="max_angle_diff" value="60"/>
+        <param name="p_coeff" value="2"/>
+        <param name="goal_tolerance" value="0.05"/>
+        <param name="prune_ahead_distance" value="0.14"/>
     </node>
 
 </launch>

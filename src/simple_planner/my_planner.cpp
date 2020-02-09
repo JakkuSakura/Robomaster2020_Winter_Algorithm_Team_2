@@ -7,8 +7,8 @@
  *  (at your option) any later version.
  *
  *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty ofÂ 
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.Â  See the
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty ofÃ‚Â 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.Ã‚Â  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
@@ -24,9 +24,8 @@
 
 #include <Eigen/Eigen>
 #include <chrono>
-
-// #include "cubic_spline/cubic_spline_ros.h"
-#include "straight_line/straight_line.h"
+#include <cmath>
+#include <iostream>
 #include "utility.h"
 
 namespace robomaster
@@ -49,8 +48,6 @@ public:
         nh.param<std::string>("global_frame", global_frame_, "odom");
 
         tf_listener_ = std::make_shared<tf::TransformListener>();
-
-        local_path_pub_ = nh.advertise<nav_msgs::Path>("path", 5);
 
         cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
@@ -83,6 +80,7 @@ private:
                             global_path_.header.frame_id, global_path_.header.stamp,
                             path2global_transform_); //source_time needs decided
 
+
             // 2. Get current robot pose in global path frame
             geometry_msgs::PoseStamped robot_pose;
             GetGlobalRobotPose(tf_listener_, global_path_.header.frame_id, robot_pose);
@@ -100,94 +98,32 @@ private:
                 return;
             }
 
+
             // 4. Get prune index from given global path
             NextPose(robot_pose, global_path_, prune_index_, prune_ahead_dist_);
 
-            // 5. Generate the prune path and transform it into local planner frame
-            nav_msgs::Path prune_path, local_path;
-
-            local_path.header.frame_id = global_frame_;
-            prune_path.header.frame_id = global_frame_;
-
-            geometry_msgs::PoseStamped tmp_pose;
-            tmp_pose.header.frame_id = global_frame_;
-
-            TransformPose(path2global_transform_, robot_pose, tmp_pose);
-            prune_path.poses.push_back(tmp_pose);
-
-            for (int i = prune_index_; i < global_path_.poses.size(); i++)
-            {
-                TransformPose(path2global_transform_, global_path_.poses[i], tmp_pose);
-                prune_path.poses.push_back(tmp_pose);
-            }
-
-            // 6. Generate the cubic spline trajectory from above prune path
-            GenTraj(prune_path, local_path);
-            local_path_pub_.publish(local_path);
-
-            // 7. Follow the trajectory and calculate the velocity
-            geometry_msgs::Twist cmd_vel;
-            FollowTraj(prune_path.poses.front(), local_path, cmd_vel);
+            geometry_msgs::Twist cmd_vel = GenCmdVel(robot_pose, global_path_.poses[prune_index_]);
             cmd_vel_pub_.publish(cmd_vel);
-
-            // auto plan_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - begin);
-            // ROS_INFO("Planning takes %f ms and passed %d/%d.",
-            //          plan_time.count() / 1000.,
-            //          prune_index_,
-            //          static_cast<int>(global_path_.poses.size()));
-        }
-    }
-
-    void FollowTraj(const geometry_msgs::PoseStamped &robot_pose,
-                    const nav_msgs::Path &traj,
-                    geometry_msgs::Twist &cmd_vel)
-    {
-
-        double diff_yaw = GetYawFromOrientation(traj.poses[0].pose.orientation) - GetYawFromOrientation(robot_pose.pose.orientation);
-
-        bool test = std::isnan(diff_yaw);
-        if (std::isnan(diff_yaw))
-        {
-            plan_ = false;
-            geometry_msgs::Twist cmd_vel;
-            cmd_vel.linear.x = 0;
-            cmd_vel.linear.y = 0;
-            cmd_vel.angular.z = 0;
-            cmd_vel_pub_.publish(cmd_vel);
-            ROS_WARN("Planning is not feasible with diff_yaw : %f", diff_yaw);
-            return;
-        }
-
-        // set it from -PI to PI
-        if (diff_yaw > M_PI)
-        {
-            diff_yaw -= 2 * M_PI;
-        }
-        else if (diff_yaw < -M_PI)
-        {
-            diff_yaw += 2 * M_PI;
-        }
-
-        // calculate velocity
-
-        if (diff_yaw > 0)
-        {
-            cmd_vel.angular.z = std::min(p_coeff_ * diff_yaw, 2.0);
-        }
-        else
-        {
-            cmd_vel.angular.z = std::max(p_coeff_ * diff_yaw, -2.0);
-        }
-
-        cmd_vel.linear.x = max_speed_ * (1.0 - std::abs(diff_yaw) / (max_angle_diff_));
-        cmd_vel.linear.y = 0;
-        if (std::abs(diff_yaw) > max_angle_diff_)
-        {
-            cmd_vel.linear.x = 0;
         }
     }
 
 private:
+
+    geometry_msgs::Twist GenCmdVel(const geometry_msgs::PoseStamped &robot_pose, const geometry_msgs::PoseStamped &goal)
+    {
+        // std::cout << "robot: " << robot_pose.pose.position.x << " " << robot_pose.pose.position.y << std::endl;
+        // std::cout << "goal: " << goal.pose.position.x << " " << goal.pose.position.y << std::endl;
+        double dx = goal.pose.position.x - robot_pose.pose.position.x;
+        double dy = goal.pose.position.y - robot_pose.pose.position.y;
+        double speed = sqrt(pow(dx, 2) + pow(dy, 2));
+        // std::cout << "dist: " << dx << " " << dy << std::endl;
+
+        geometry_msgs::Twist cmd_vel;
+        cmd_vel.linear.y = -dx / speed * max_speed_;
+        cmd_vel.linear.x = dy / speed * max_speed_;
+        cmd_vel.angular.z = 0;
+        return cmd_vel;
+    }
     // update prune_index when arriving at a certain point
     void NextPose(geometry_msgs::PoseStamped &robot_pose, nav_msgs::Path &path, int &prune_index, double prune_ahead_dist)
     {
@@ -203,11 +139,11 @@ private:
     std::shared_ptr<tf::TransformListener> tf_listener_;
     tf::StampedTransform path2global_transform_;
 
+
     std::string global_frame_;
     ros::Timer plan_timer_;
 
     ros::Subscriber global_path_sub_;
-    ros::Publisher local_path_pub_;
     ros::Publisher cmd_vel_pub_;
 
     bool plan_;
@@ -226,7 +162,7 @@ private:
 using namespace robomaster;
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "local_planner");
+    ros::init(argc, argv, "my_planner");
     ros::NodeHandle nh("~");
     LocalPlanner local_planner(nh);
     ros::spin();

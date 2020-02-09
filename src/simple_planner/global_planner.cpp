@@ -79,6 +79,14 @@ private:
 
 #ifdef GENERATE_DATA
     std::ofstream output(data_filename, std::ios::app);
+    output << "blue: ";
+    for (size_t i = 0; i < 36; i++)
+    {
+      output << mat2[i] << " ";
+    }
+    output << std::endl;
+
+    output << "path: ";
     for (size_t i = 0; i < 36; i++)
     {
       output << best[i] << " ";

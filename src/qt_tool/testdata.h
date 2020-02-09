@@ -4,7 +4,6 @@
 #include <algorithm>
 inline int const *get_mat1()
 {
-
     static int mat1[] =
         {
             0, 1, 2, 3, 4, 5,
@@ -15,6 +14,9 @@ inline int const *get_mat1()
             30, 31, 32, 33, 34, 35};
     return mat1;
 }
+
+#include <ctime>
+#include <cstdlib>
 
 inline int const *get_mat2()
 {
@@ -28,9 +30,10 @@ inline int const *get_mat2()
             33, 10, 3, 32, 28, 29};
 #ifndef FIXED_VALUES
     static bool shuffled = false;
-    if(!shuffled)
+    if (!shuffled)
     {
         shuffled = true;
+        srand(time(0));
         std::random_shuffle(mat2, mat2 + 36);
     }
 #endif
