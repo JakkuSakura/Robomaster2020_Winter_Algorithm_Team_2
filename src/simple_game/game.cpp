@@ -171,7 +171,7 @@ int main(int argc, char **argv)
 #ifdef GENERATE_DATA
         if (ros::Time::now() - last > ros::Duration(TIME_LIMIT))
         {
-            determinate("out_out_time");
+            determinate("out_of_time");
         }
 #endif
         if (pair.size() == 36)
