@@ -44,19 +44,9 @@ int main(int argc, char **argv)
     std_msgs::Int16MultiArray points;
     points.data.reserve(36);
 
-    #ifdef FIXED_VALUES
-        for(int i = 0; i < 36; i++){
-            points.data.push_back(get_mat2()[i]);
-        }
-    #elif
-        for(int i = 0; i < 36; i++){
-            points.data.push_back(i);
-        }
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::shuffle ( points.data.begin(), points.data.end(), gen );
-
-    #endif
+    for(int i = 0; i < 36; i++){
+        points.data.push_back(get_mat2()[i]);
+    }
     
     //generate markers
     visualization_msgs::MarkerArray number_array;
@@ -121,7 +111,7 @@ int main(int argc, char **argv)
     int neighbor_index;
     ros::Time start;
     std::vector<int> pair;
-    sleep(10);
+    ros::Duration(0.1).sleep();
     ros::Rate rate(30);
     while (ros::ok()){
         GetGlobalRobotPose(tf_listener,"map",robot_pose);
@@ -158,8 +148,8 @@ int main(int argc, char **argv)
             std::ofstream output(data_filename, std::ios::app);
             output << "OUT" << std::endl;
             output.close();
-
             system("killall rosmaster");
+            ros::Duration(3).sleep();
         }
 #endif        
         if (pair.size() == 36){
