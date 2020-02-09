@@ -56,7 +56,6 @@ public:
 
         global_path_sub_ = nh.subscribe("/global_planner/path", 5, &LocalPlanner::GlobalPathCallback, this);
         plan_timer_ = nh.createTimer(ros::Duration(1.0 / plan_freq_), &LocalPlanner::Plan, this);
-        ROS_INFO("Init finished");
     }
     ~LocalPlanner() = default;
     void GlobalPathCallback(const nav_msgs::PathConstPtr &msg)
@@ -145,7 +144,6 @@ private:
 
         double diff_yaw = GetYawFromOrientation(traj.poses[0].pose.orientation) - GetYawFromOrientation(robot_pose.pose.orientation);
 
-        bool test = std::isnan(diff_yaw);
         if (std::isnan(diff_yaw))
         {
             plan_ = false;

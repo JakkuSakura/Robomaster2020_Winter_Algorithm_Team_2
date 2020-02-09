@@ -105,9 +105,11 @@ class Graph
   size_t max_species_population = 10;
   size_t elite_protection_number_per_species = 2;
 
+  size_t initial_generation_population = 100;
+
   float same_speices_distance_threshold = 10;
 
-  int generation_number = 100;
+  int generation_number = 10;
   int thread_number = 4;
 
   double inherit_probability = 0.03;
@@ -181,7 +183,7 @@ public:
   {
     std::vector<Solution> results;
     results.push_back(A_Star::Graph(mat1, mat2).calc(A_Star::State()).path);
-    for (size_t i = 0; i < 100; i++)
+    for (size_t i = 1; i < initial_generation_population; i++)
     {
       Solution res;
       for (size_t i = 0; i < 36; i++)

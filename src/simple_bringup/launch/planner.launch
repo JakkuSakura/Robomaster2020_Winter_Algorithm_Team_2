@@ -35,13 +35,37 @@
     
     <!-- Run the modified local planner -->
     <node pkg="simple_planner" type="my_planner" name="my_planner" respawn="true" output="screen" >
+        <!-- for local planner -->
         <param name="global_frame" value="odom"/>
-        <param name="plan_frequency" value="50"/>
-        <param name="max_speed" value="2"/>
-        <param name="max_angle_diff" value="60"/>
-        <param name="p_coeff" value="2"/>
-        <param name="goal_tolerance" value="0.05"/>
+        <param name="goal_tolerance" value="0.14"/>
         <param name="prune_ahead_distance" value="0.14"/>
+        <param name="plan_frequency" value="30"/>
+
+        <!--  for pid -->
+        <param name="max_speed" value="2"/>
+
+        <param name="max_x_speed" value="2"/>
+        <param name="max_y_speed" value="2"/>
+
+        <param name="max_angle_diff" value="180"/>
+
+        <param name="goal_angle_tolerance" value="15"/>
+
+        <param name="x_p_coeff" value="3"/>
+        <param name="x_i_coeff" value="0"/>
+        <param name="x_d_coeff" value="0"/>
+        <param name="x_i_limit" value="0"/>
+        
+        <param name="y_p_coeff" value="3"/>
+        <param name="y_i_coeff" value="0"/>
+        <param name="y_d_coeff" value="0"/>
+        <param name="y_i_limit" value="0"/>
+        
+        <param name="z_p_coeff" value="1"/>
+        <param name="z_i_coeff" value="0"/>
+        <param name="z_d_coeff" value="0"/>
+        <param name="z_i_limit" value="0"/>
+
     </node>
 
 </launch>
