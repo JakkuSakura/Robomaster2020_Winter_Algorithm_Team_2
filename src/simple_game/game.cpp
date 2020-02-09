@@ -161,6 +161,7 @@ int main(int argc, char **argv)
             output.close();
 
             system("killall rosmaster");
+            ros::Duration(3).sleep();
 #endif
             ros::shutdown();
         }
