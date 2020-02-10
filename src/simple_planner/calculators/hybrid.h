@@ -274,6 +274,9 @@ public:
       solutions.push_back(child1);
       solutions.push_back(child2);
     }
+    {
+
+    }
 
     return solutions;
   }
@@ -329,11 +332,25 @@ public:
       next_gen.push_back(s);
     }
 
-    // if (random(transform_probabilty))
-    // {
-    // int a = rand() % solu.size(), b = rand() % solu.size(), c = rand() % solu.size();
-    // not gonna implement it yet
-    // }
+    if (random(transform_probabilty))
+    {
+        int a[3] = {rand() % solu.size(), rand() % solu.size(), rand() % solu.size()};
+        sort(a, a+3);
+        
+        Solution s;
+        int ptr = 0;
+        for(int i = 0; i < a[0]; ++i)
+            s.set(ptr++, solu[i]);
+        for(int i = a[1] + 1; i < a[2]; ++i)
+            s.set(ptr++, solu[i]);
+        for(int i = a[0]; i <= a[1]; ++i)
+            s.set(ptr++, solu[i]);
+        for(int i = a[2]; i < solu.size(); ++i)
+            s.set(ptr++, solu[i]);
+        // assert(ptr == 36);
+        next_gen.push_back(s);
+
+    }
   }
   void crossover(const Solution &solu, const Species &now_species, Species &next_gen, const Population &population)
   {
