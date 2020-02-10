@@ -1,11 +1,5 @@
 <launch>
 
-    <!-- Run the global path planner -->
-    <node pkg="simple_planner" type="global_planner" name="global_planner" respawn="true" output="screen" >
-        <param name="global_frame" value="map"/>
-        <param name="plan_frequency" value="50"/>
-    </node>
-
     <!-- Run the local trajectory planner -->
     <!-- <node pkg="simple_planner" type="local_planner" name="local_planner" respawn="true" output="screen" >
         <param name="global_frame" value="odom"/>
@@ -35,8 +29,8 @@
     <node pkg="simple_planner" type="my_planner" name="my_planner" respawn="true" output="screen" >
         <!-- for local planner -->
         <param name="global_frame" value="odom"/>
-        <param name="goal_tolerance" value="0.15"/>
-        <param name="prune_ahead_distance" value="0.15"/>
+        <param name="goal_tolerance" value="0.10"/>
+        <param name="prune_ahead_distance" value="0.10"/>
         <param name="plan_frequency" value="20"/>
 
         <param name="stuck_vel_threshold_" value="0.5"/>
@@ -52,16 +46,16 @@
         <param name="max_angular_acceleration" value="180"/>
 
         <param name="rush_angle_tolerance" value="30"/>
-        <!-- <param name="turn_angle_tolerance" value="60"/> -->
-        
+        <param name="rush_dist_tolerance" value="0.5"/>
+        <param name="soft_turn_angle_tolerance" value="80"/>
 
         <param name="max_x_speed" value="2"/>
-        <param name="x_p_coeff" value="3"/>
+        <param name="x_p_coeff" value="1.8"/>
         <param name="x_i_coeff" value="0"/>
         <param name="x_d_coeff" value="0"/>
         <param name="x_i_limit" value="0"/>
         
-        <param name="max_y_speed" value="0.2"/>
+        <param name="max_y_speed" value="0"/>
         <param name="y_p_coeff" value="3"/>
         <param name="y_i_coeff" value="0"/>
         <param name="y_d_coeff" value="0"/>
@@ -74,4 +68,10 @@
 
     </node>
 
+    <node pkg="simple_planner" type="global_path_specifier" name="global_path_specifier" respawn="true" output="screen" >
+        <param name="global_frame" value="map"/>
+        <param name="plan_frequency" value="50"/>
+        <param name="point_num" value="3"/>
+        <param name="waypoint_distance" value="0.3"/>
+    </node>
 </launch>

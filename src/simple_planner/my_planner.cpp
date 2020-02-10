@@ -15,7 +15,7 @@
 #include "utility.h"
 #include "pid.h"
 #include "pid.c"
-
+#include "graph.h"
 namespace robomaster
 {
 inline double limit(double v, double abs_limit)
@@ -78,7 +78,6 @@ public:
         pid_init(&pid_y_);
         pid_init(&pid_z_);
 
-        
         nh.param<double>("stuck_vel_threshold", stuck_vel_threshold_, 0.5);
 
         nh.param<double>("stuck_detection_time", stuck_detection_time_, 0.2);
@@ -118,9 +117,10 @@ public:
         nh.param<double>("prune_ahead_distance", prune_ahead_dist_, 0.3);
         nh.param<double>("rush_angle_tolerance", rush_angle_tolerance_, 30);
         rush_angle_tolerance_ = rush_angle_tolerance_ * M_PI / 180;
+        nh.param<double>("rush_dist_tolerance", rush_dist_tolerance_, 1);
 
-        // nh.param<double>("turn_angle_tolerance", turn_angle_tolerance_, 60);
-        // turn_angle_tolerance_ = turn_angle_tolerance_ * M_PI / 180;
+        nh.param<double>("soft_turn_angle_tolerance", soft_turn_angle_tolerance_, 60);
+        soft_turn_angle_tolerance_ = soft_turn_angle_tolerance_ * M_PI / 180;
 
         nh.param<std::string>("global_frame", global_frame_, "odom");
 
@@ -131,6 +131,7 @@ public:
         global_path_sub_ = nh.subscribe("/global_planner/path", 5, &MyPlanner::fetch_global_path, this);
         odom_sub_ = nh.subscribe("/odom", 100, &MyPlanner::fetch_odem, this);
         plan_timer_ = nh.createTimer(ros::Duration(time_delta_), &MyPlanner::plan, this);
+        reset_cmd_vel_ = false;
     }
     ~MyPlanner() = default;
 
@@ -150,8 +151,13 @@ private:
     {
         if (plan_)
         {
-            auto begin = std::chrono::steady_clock::now();
-
+            if (ros::Time::now() < last_cmd_vel_expiring_time_)
+                return;
+            if (reset_cmd_vel_)
+            {
+                publish_velocity(geometry_msgs::Twist());
+                reset_cmd_vel_ = false;
+            }
             // 1. Update the transform from global path frame to local planner frame
             UpdateTransform(tf_listener_, global_frame_,
                             global_path_.header.frame_id, global_path_.header.stamp,
@@ -185,11 +191,15 @@ private:
             generate_velocity_command(global_robot_pose, global_path_.poses[prune_index_]);
         }
     }
+    nav_msgs::Odometry get_current_pose_and_twist()
+    {
+        return pose_and_twist_.front();
+    }
     void fetch_odem(const nav_msgs::Odometry::ConstPtr &msg)
     {
-        pose_and_twist_.push_back(*msg);
-        while(ros::Time::now() - pose_and_twist_.front().header.stamp > ros::Duration(stuck_detection_time_))
-            pose_and_twist_.pop_front();
+        pose_and_twist_.push_front(*msg);
+        while (ros::Time::now() - pose_and_twist_.back().header.stamp > ros::Duration(stuck_detection_time_))
+            pose_and_twist_.pop_back();
     }
 
     // the robot pose must be in the same frame as pose_and_twist, aka global_frame or odom frame
@@ -216,31 +226,50 @@ private:
 
         bool is_stuck = last_cmd_speed > stuck_vel_threshold_ && same_pose(pose_and_twist_.front().pose.pose, pose_and_twist_.back().pose.pose, 1e-5);
 
-        if(is_stuck)
+        if (is_stuck)
         {
             ROS_WARN("Got stuck! cmd_speed.linear.x=%lf", last_cmd_vel_.linear.x);
             geometry_msgs::Twist cmd_vel;
-            cmd_vel.linear.x = max_x_speed_ * sign(goal_pose.pose.position.x);
+            cmd_vel.linear.x = -max_x_speed_ * sign(last_cmd_vel_.linear.x);
             cmd_vel.linear.y = max_y_speed_ * sign(goal_pose.pose.position.y);
             cmd_vel.angular.z = 0;
-            publish_velocity(cmd_vel);
-            ros::Duration(stuck_back_up_time_).sleep();
-            publish_velocity(geometry_msgs::Twist());
+
+            publish_velocity(cmd_vel, stuck_back_up_time_);
+            reset_cmd_vel_ = true;
             return;
         }
 
+        double turning_angle = 0;
+        if (prune_index_ + 1 < global_frame_.size())
+        {
+            const auto &next_goal = global_path_.poses[prune_index_ + 1];
+            double direction = GetYawFromOrientation(get_current_pose_and_twist().pose.pose.orientation);
+            double direction_next = atan2(next_goal.pose.position.y - goal.pose.position.y, next_goal.pose.position.x - goal.pose.position.x);
+            turning_angle = distance_in_radius(direction, direction_next);
+        }
+
+        double dist_goal = sqrt(pow(goal_pose.pose.position.x, 2) + pow(goal_pose.pose.position.x, 2));
         geometry_msgs::Twist cmd_vel;
 
         if (std::abs(diff_yaw) < rush_angle_tolerance_)
         {
-            cmd_vel.linear.x = max_x_speed_;
+            if (dist_goal > rush_dist_tolerance_ || turning_angle < soft_turn_angle_tolerance_)
+                cmd_vel.linear.x = max_x_speed_;
+            else
+            {
+                cmd_vel.linear.x = limit(pid_process(&pid_x_, -dist_goal), max_x_speed_);
+            }
             cmd_vel.linear.y = limit(pid_process(&pid_y_, -goal_pose.pose.position.y), max_y_speed_);
             cmd_vel.angular.z = limit(pid_process(&pid_z_, -diff_yaw), max_angle_diff_);
         }
         else if (std::abs(diff_yaw) < M_PI_2)
         {
-
-            cmd_vel.linear.x = max_x_speed_;
+            if (dist_goal > rush_dist_tolerance_ || turning_angle < soft_turn_angle_tolerance_)
+                cmd_vel.linear.x = max_x_speed_;
+            else
+            {
+                cmd_vel.linear.x = limit(pid_process(&pid_x_, -dist_goal), max_x_speed_);
+            }
             cmd_vel.linear.y = 0;
             cmd_vel.angular.z = max_angle_diff_ * sign(diff_yaw);
         }
@@ -260,17 +289,16 @@ private:
 
         double speed = sqrt(pow(cmd_vel.linear.x, 2) + pow(cmd_vel.linear.y, 2));
 
-        cmd_vel.linear.x = cmd_vel.linear.x / speed * max_x_speed_;
-        cmd_vel.linear.y = cmd_vel.linear.y / speed * max_y_speed_;
-        
         cmd_vel.linear.x = limit(cmd_vel.linear.x, last_cmd_vel_.linear.x, max_acceleration_, time_delta_);
         cmd_vel.linear.y = limit(cmd_vel.linear.y, last_cmd_vel_.linear.y, max_acceleration_, time_delta_);
 
         // cmd_vel.angular.z = limit(cmd_vel.angular.z, last_cmd_vel_.angular.z, max_angular_acceleration_, time_delta_);
     }
-    void publish_velocity(const geometry_msgs::Twist &vel)
+
+    void publish_velocity(const geometry_msgs::Twist &vel, double keep_time = 0)
     {
         last_cmd_vel_ = vel;
+        last_cmd_vel_expiring_time_ = ros::Time::now() + ros::Duration(keep_time);
         cmd_vel_pub_.publish(vel);
     }
 
@@ -304,6 +332,9 @@ private:
     nav_msgs::Path global_path_;
 
     geometry_msgs::Twist last_cmd_vel_;
+    ros::Time last_cmd_vel_expiring_time_;
+    bool reset_cmd_vel_;
+
     std::deque<nav_msgs::Odometry> pose_and_twist_;
 
     double max_speed_;
@@ -316,7 +347,8 @@ private:
     double goal_tolerance_;
     double prune_ahead_dist_;
     double rush_angle_tolerance_;
-    // double turn_angle_tolerance_;
+    double rush_dist_tolerance_;
+    double soft_turn_angle_tolerance_;
     int plan_freq_;
     double time_delta_;
     pid_ctrl_t pid_x_;

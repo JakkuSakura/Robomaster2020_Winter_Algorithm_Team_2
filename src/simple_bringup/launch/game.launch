@@ -1,4 +1,11 @@
 <launch>
     <include file="$(find simple_bringup)/launch/simulator.launch" />
     <node name="game" pkg="simple_game" type="game" respawn="false" output="screen" />
+
+    <!-- Run the global path planner -->
+    <node pkg="simple_planner" type="global_planner" name="global_planner" respawn="true" output="screen" >
+        <param name="global_frame" value="map"/>
+        <param name="plan_frequency" value="50"/>
+    </node>
+
 </launch>

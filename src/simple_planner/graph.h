@@ -52,13 +52,22 @@ inline float dist(float x1, float y1, float x2, float y2)
 {
     return sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
 }
-
-inline float distance_in_degree(float alpha, float beta)
+template<typename T>
+inline float distance_in_radius(T alpha, T beta)
 {
-    float phi = abs(beta - alpha);
+    T phi = std::abs(beta - alpha);
+    while (phi > 2 * M_PI)
+        phi -= 2 * M_PI;
+    T distance = phi > M_PI ? 2 * M_PI - phi : phi;
+    return distance;
+}
+template<typename T>
+inline T distance_in_degree(T alpha, T beta)
+{
+    T phi = std::abs(beta - alpha);
     while (phi > 360)
         phi -= 360;
-    float distance = phi > 180 ? 360 - phi : phi;
+    T distance = phi > 180 ? 360 - phi : phi;
     return distance;
 }
 
@@ -235,7 +244,7 @@ inline float genetic_distance(const Solution &a, const Solution &b)
     float dist = 0;
     for (size_t i = 0; i < a.size(); i++)
     {
-        dist += abs(a2[i] - b2[i]);
+        dist += std::abs(a2[i] - b2[i]);
     }
 
     return dist / a.size();
