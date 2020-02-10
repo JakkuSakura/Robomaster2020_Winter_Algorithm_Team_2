@@ -90,18 +90,30 @@ public:
     {
         // check();
     }
+    bool has(int x) const
+    {
+        for (size_t i = 0; i < 36; i++)
+        {
+            if (v[i] == x)
+                return true;
+        }
+        return false;
+    }
     void set(int i, int val)
     {
+        // v.at(i) = val;
         v[i] = val;
         cached_time = 0;
     }
     int &mut_ref(int index)
     {
         cached_time = 0;
+        // return v.at(index);
         return v[index];
     }
     int operator[](int index) const
     {
+        // return v.at(index);
         return v[index];
     }
     size_t size() const
@@ -126,7 +138,7 @@ public:
             counts[v[i]] += 1;
         }
         for (size_t i = 0; i < size(); ++i)
-            if(counts[i] != 1)
+            if (counts[i] != 1)
                 throw std::invalid_argument("In check(), count of value for solution is not exactly one");
     }
     std::vector<int> to_order() const

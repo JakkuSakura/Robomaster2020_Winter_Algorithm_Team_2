@@ -270,12 +270,8 @@ public:
       oper(s1, child1);
       oper(s2, child2);
       next_gen.push_back(child1);
-      next_gen.push_back(child2);
     }
     {
-      /*  used to vary the programming of a
-		    chromosome from one generation to the next. */
-
       std::vector<int> _GA = s1.unwrap();
       std::vector<int> _GB = s2.unwrap();
       std::vector<int> offspringGenome;
@@ -304,6 +300,76 @@ public:
       }
 
       Solution s = offspringGenome;
+      next_gen.push_back(s);
+    }
+    {
+      // CX
+      Solution child;
+      int p = 0;
+      while (s1[0] != s2[p])
+      {
+        child.set(0, s1[p]);
+        p = std::find(s1.begin(), s1.end(), s2[p]) - s1.begin();
+      }
+      for (size_t i = 0; i < child.size(); ++i)
+        if (child[i] == -1)
+          child.set(i, s2[i]);
+
+      try
+      {
+        child.check();
+        next_gen.push_back(child);
+      }
+      catch (const std::exception &e)
+      {
+        // discard illegal solutions
+      }
+    }
+    {
+      // OX1
+      Solution s;
+      size_t a = rand() % s1.size(), b = rand() % s1.size();
+      for (size_t i = a; i <= b; ++i)
+        s.set(i, s2[i]);
+      int ptr = 0;
+      for (size_t i = b + 1; i < s.size(); ++i)
+      {
+        while (ptr < 36 && s.has(s1[ptr]))
+          ptr += 1;
+        if (ptr < 36)
+        {
+          s.set(i, s1[ptr]);
+          ptr += 1;
+        }
+      }
+      for (size_t i = 0; i < a; ++i)
+      {
+        while (ptr < 36 && s.has(s1[ptr]))
+          ptr += 1;
+        if (ptr < 36)
+        {
+          s.set(i, s1[ptr]);
+          ptr += 1;
+        }
+      }
+      next_gen.push_back(s);
+    }
+    {
+      // APX
+      Solution s;
+      int ptr = 0;
+      for (size_t i = 0; i < s.size(); i++)
+      {
+          if (!s.has(s1[i]))
+          {
+            s.set(ptr, s1[i]);
+            ptr += 1;
+          }
+          if (!s.has(s2[i])) {
+            s.set(ptr, s2[i]);
+            ptr += 1;
+          }
+      }
       next_gen.push_back(s);
     }
   }
@@ -406,7 +472,6 @@ public:
       const Solution &s2 = species2[rand() % species2.size()];
       // assert(s2.size() > 0);
       crossover(solu, s2, next_gen);
-      
     }
   }
   Population select(const Population &population)
