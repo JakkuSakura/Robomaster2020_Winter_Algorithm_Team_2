@@ -32,7 +32,7 @@ inline double limit(double now, double last, double abs_limit_acc, double delta)
 }
 inline void show_pose(const geometry_msgs::Pose &pose)
 {
-    printf("p (%.10lf,%.10lf,%.10lf) o (%.10lf,%.10lf,%.10lf,%.10lf)",
+    printf("p (%.10lf,%.10lf,%.10lf) o (%.10lf,%.10lf,%.10lf,%.10lf)\n",
            pose.position.x,
            pose.position.y,
            pose.position.z,
@@ -43,6 +43,7 @@ inline void show_pose(const geometry_msgs::Pose &pose)
 }
 inline bool same_pose(const geometry_msgs::Pose &p1, const geometry_msgs::Pose &p2, double tolerance)
 {
+
     double px1 = p1.position.x, px2 = p2.position.x;
     double py1 = p1.position.y, py2 = p2.position.y;
     double pz1 = p1.position.z, pz2 = p2.position.z;
@@ -53,7 +54,7 @@ inline bool same_pose(const geometry_msgs::Pose &p1, const geometry_msgs::Pose &
 
     bool flag = std::abs(px1 - px2) < tolerance &&
                 std::abs(py1 - py2) < tolerance &&
-                std::abs(pz1 - px2) < tolerance &&
+                std::abs(pz1 - pz2) < tolerance &&
                 std::abs(ox1 - ox2) < tolerance &&
                 std::abs(oy1 - oy2) < tolerance &&
                 std::abs(oz1 - oz2) < tolerance &&
