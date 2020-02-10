@@ -79,7 +79,10 @@ public:
         pid_init(&pid_z_);
 
         
-        nh.param<double>("stuck_vel_error", stuck_vel_error_, 0.1);
+        nh.param<double>("stuck_vel_threshold", stuck_vel_threshold_, 0.5);
+
+        nh.param<double>("stuck_detection_time", stuck_detection_time_, 0.2);
+        nh.param<double>("stuck_back_up_time", stuck_back_up_time_, 0.5);
 
         nh.param<double>("max_speed", max_speed_, 2.0);
         nh.param<double>("max_acceleration", max_acceleration_, 2.0);
@@ -185,28 +188,13 @@ private:
     void fetch_odem(const nav_msgs::Odometry::ConstPtr &msg)
     {
         pose_and_twist_.push_back(*msg);
-        while(ros::Time::now() - pose_and_twist_.front().header.stamp > ros::Duration(1.0))
+        while(ros::Time::now() - pose_and_twist_.front().header.stamp > ros::Duration(stuck_detection_time_))
             pose_and_twist_.pop_front();
     }
 
     // the robot pose must be in the same frame as pose_and_twist, aka global_frame or odom frame
     void generate_velocity_command(const geometry_msgs::PoseStamped &robot, geometry_msgs::PoseStamped &goal)
     {
-        double last_cmd_speed = sqrt(pow(last_cmd_vel_.linear.x, 2) + pow(last_cmd_vel_.linear.y, 2));
-
-        bool is_stuck = last_cmd_speed > stuck_vel_error_ && same_pose(pose_and_twist_.front().pose.pose, pose_and_twist_.back().pose.pose, 1e-5);
-
-        if(is_stuck)
-        {
-            ROS_WARN("Got stuck! cmd_speed.linear.x=%lf", last_cmd_vel_.linear.x);
-            geometry_msgs::Twist cmd_vel;
-            cmd_vel.linear.x = -max_speed_ * sign(last_cmd_vel_.linear.x);
-            cmd_vel.linear.y = 0;
-            cmd_vel.angular.z = 0;
-            publish_velocity(cmd_vel);
-            ros::Duration(0.5).sleep();
-            return;
-        }
 
         geometry_msgs::PoseStamped goal_pose;
         goal.header.stamp = ros::Time::now();
@@ -221,6 +209,22 @@ private:
         if (std::isnan(diff_yaw))
         {
             ROS_WARN("Too close, not adjusting");
+            return;
+        }
+
+        double last_cmd_speed = sqrt(pow(last_cmd_vel_.linear.x, 2) + pow(last_cmd_vel_.linear.y, 2));
+
+        bool is_stuck = last_cmd_speed > stuck_vel_threshold_ && same_pose(pose_and_twist_.front().pose.pose, pose_and_twist_.back().pose.pose, 1e-5);
+
+        if(is_stuck)
+        {
+            ROS_WARN("Got stuck! cmd_speed.linear.x=%lf", last_cmd_vel_.linear.x);
+            geometry_msgs::Twist cmd_vel;
+            cmd_vel.linear.x = max_x_speed_ * sign(goal_pose.pose.position.x);
+            cmd_vel.linear.y = max_y_speed_ * sign(goal_pose.pose.position.y);
+            cmd_vel.angular.z = 0;
+            publish_velocity(cmd_vel);
+            ros::Duration(stuck_back_up_time_).sleep();
             return;
         }
 
@@ -246,7 +250,7 @@ private:
         }
         else
         {
-            cmd_vel.linear.x = -max_speed_;
+            cmd_vel.linear.x = -max_x_speed_;
             cmd_vel.linear.y = 0;
             cmd_vel.angular.z = max_angle_diff_ * sign(diff_yaw);
         }
@@ -317,7 +321,9 @@ private:
     pid_ctrl_t pid_x_;
     pid_ctrl_t pid_y_;
     pid_ctrl_t pid_z_;
-    double stuck_vel_error_;
+    double stuck_vel_threshold_;
+    double stuck_detection_time_
+    double stuck_back_up_time_;
 };
 } // namespace robomaster
 
