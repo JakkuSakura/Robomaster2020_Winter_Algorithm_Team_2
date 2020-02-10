@@ -37,15 +37,16 @@
     <node pkg="simple_planner" type="my_planner" name="my_planner" respawn="true" output="screen" >
         <!-- for local planner -->
         <param name="global_frame" value="odom"/>
-        <param name="goal_tolerance" value="0.14"/>
-        <param name="prune_ahead_distance" value="0.14"/>
+        <param name="goal_tolerance" value="0.15"/>
+        <param name="prune_ahead_distance" value="0.15"/>
         <param name="plan_frequency" value="30"/>
 
         <!--  for pid -->
         <param name="max_speed" value="2"/>
-
+        <param name="max_acceleration" value="2"/>
 
         <param name="max_angle_diff" value="180"/>
+        <param name="max_angular_acceleration" value="180"/>
 
         <param name="goal_angle_tolerance" value="30"/>
 
@@ -61,7 +62,7 @@
         <param name="y_d_coeff" value="0"/>
         <param name="y_i_limit" value="0"/>
         
-        <param name="z_p_coeff" value="3"/>
+        <param name="z_p_coeff" value="4"/>
         <param name="z_i_coeff" value="0"/>
         <param name="z_d_coeff" value="0.5"/>
         <param name="z_i_limit" value="0"/>

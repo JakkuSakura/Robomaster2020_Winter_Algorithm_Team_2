@@ -40,6 +40,11 @@ inline double limit(double v, double abs_limit)
     else
         return std::max(v, -abs_limit);
 }
+inline double limit(double now, double last, double abs_limit_acc, double delta)
+{
+    double acc = limit((now - last) / delta, abs_limit_acc);
+    return last + acc * delta;
+}
 class MyPlanner
 {
 public:
@@ -48,14 +53,18 @@ public:
         pid_init(&pid_x_);
         pid_init(&pid_y_);
         pid_init(&pid_z_);
-        // TODO 机器人运动最高线速度为 2m/s, 最高角速度为 180°/s, 最高线加速度为 2m/(s^2), 最高角加速度为 180°/(s^2)
 
         nh.param<double>("max_speed", max_speed_, 2.0);
+        nh.param<double>("max_acceleration", max_acceleration_, 2.0);
+
         nh.param<double>("max_x_speed", max_x_speed_, 2.0);
-        nh.param<double>("max_y_speed", max_y_speed_, 2.0);
-        double max_angle_diff;
-        nh.param<double>("max_angle_diff", max_angle_diff, 180);
-        max_angle_diff_ = max_angle_diff * M_PI / 180;
+        nh.param<double>("max_y_speed", max_y_speed_, 0.1);
+
+        nh.param<double>("max_angle_diff", max_angle_diff_, 180);
+        max_angle_diff_ = max_angle_diff_ * M_PI / 180;
+
+        nh.param<double>("max_angular_acceleration_", max_angular_acceleration_, 180);
+        max_angular_acceleration_ = max_angular_acceleration_ * M_PI / 180;
 
         nh.param<float>("x_p_coeff", pid_x_.kp, 10.0);
         nh.param<float>("x_i_coeff", pid_x_.ki, 0.0);
@@ -73,6 +82,8 @@ public:
         nh.param<float>("z_i_limit", pid_z_.integrator_limit, 0.0);
 
         nh.param<int>("plan_frequency", plan_freq_, 50);
+        time_delta_ = 1.0 / plan_freq_;
+
         nh.param<double>("goal_tolerance", goal_tolerance_, 0.1);
         nh.param<double>("prune_ahead_distance", prune_ahead_dist_, 0.3);
         nh.param<double>("goal_angle_tolerance", goal_angle_tolerance_, 0.05);
@@ -85,7 +96,7 @@ public:
         cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
         global_path_sub_ = nh.subscribe("/global_planner/path", 5, &MyPlanner::GlobalPathCallback, this);
-        plan_timer_ = nh.createTimer(ros::Duration(1.0 / plan_freq_), &MyPlanner::Plan, this);
+        plan_timer_ = nh.createTimer(ros::Duration(time_delta_), &MyPlanner::Plan, this);
     }
     ~MyPlanner() = default;
     void GlobalPathCallback(const nav_msgs::PathConstPtr &msg)
@@ -175,8 +186,17 @@ private:
             cmd_vel.linear.y = 0;
             cmd_vel.angular.z = max_angle_diff_ * diff_yaw / abs(diff_yaw);
         }
+        cmd_vel.linear.x = limit(cmd_vel.linear.x, last_vel_.linear.x, max_acceleration_, time_delta_);
+        cmd_vel.linear.y = limit(cmd_vel.linear.y, last_vel_.linear.y, max_acceleration_, time_delta_);
 
-        cmd_vel_pub_.publish(cmd_vel);
+        cmd_vel.angular.z = limit(cmd_vel.angular.z, cmd_vel.angular.z, max_angular_acceleration_, time_delta_);
+
+        publish_velocity(cmd_vel);
+    }
+    void publish_velocity(const geometry_msgs::Twist &vel)
+    {
+        last_vel_ = vel;
+        cmd_vel_pub_.publish(vel);
     }
     // update prune_index when arriving at a certain point
     void NextPose(geometry_msgs::PoseStamped &robot_pose, nav_msgs::Path &path, int &prune_index, double prune_ahead_dist)
@@ -206,15 +226,20 @@ private:
     int prune_index_;
     nav_msgs::Path global_path_;
 
+    geometry_msgs::Twist last_vel_;
+
     double max_speed_;
+    double max_acceleration_;
     double max_x_speed_;
     double max_y_speed_;
     double max_angle_diff_;
+    double max_angular_acceleration_;
 
     double goal_tolerance_;
     double prune_ahead_dist_;
     double goal_angle_tolerance_;
     int plan_freq_;
+    double time_delta_;
     pid_ctrl_t pid_x_;
     pid_ctrl_t pid_y_;
     pid_ctrl_t pid_z_;
