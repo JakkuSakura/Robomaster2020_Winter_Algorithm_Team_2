@@ -322,7 +322,7 @@ private:
     pid_ctrl_t pid_y_;
     pid_ctrl_t pid_z_;
     double stuck_vel_threshold_;
-    double stuck_detection_time_
+    double stuck_detection_time_;
     double stuck_back_up_time_;
 };
 } // namespace robomaster
