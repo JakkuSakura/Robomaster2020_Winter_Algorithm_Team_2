@@ -2,7 +2,8 @@
 
 #include <QApplication>
 #include <iostream>
-#include "testdata.h"
+int const *get_mat1();
+int const *get_mat2();
 std::vector<int> calculate_path(const int *, const int *);
 int main(int argc, char *argv[])
 {

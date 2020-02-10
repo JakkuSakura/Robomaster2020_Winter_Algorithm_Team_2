@@ -15,7 +15,6 @@ inline bool random(double p)
   return 1.0 * rand() / RAND_MAX <= p;
 }
 
-
 class Species
 {
   std::vector<Solution> solutions;
@@ -110,7 +109,7 @@ class Graph
   float same_speices_distance_threshold = 10;
 
   int generation_number = 10;
-  int thread_number = 4;
+  int thread_number = 1;
 
   double inherit_probability = 0.03;
   double swap_probability = 1;
@@ -238,10 +237,9 @@ public:
 
     return population;
   }
-  std::vector<Solution> crossover(const Solution &s1, const Solution &s2)
+  void crossover(const Solution &s1, const Solution &s2, Species &next_gen)
   {
     // assert(s1.size() == s2.size());
-    std::vector<Solution> solutions;
     { // PMX
       int a = rand() % s1.size(), b = rand() % s1.size();
       if (a > b)
@@ -271,15 +269,45 @@ public:
       };
       oper(s1, child1);
       oper(s2, child2);
-      solutions.push_back(child1);
-      solutions.push_back(child2);
+      next_gen.push_back(child1);
+      next_gen.push_back(child2);
     }
     {
+      /*  used to vary the programming of a
+		    chromosome from one generation to the next. */
 
+      std::vector<int> _GA = s1.unwrap();
+      std::vector<int> _GB = s2.unwrap();
+      std::vector<int> offspringGenome;
+      std::set<int> keepTrack;
+
+      size_t sizeGenome = _GA.size();
+      // generate a random index in range [2, .. , sizeGenome - 2]
+      unsigned randomIndex = (rand() % (sizeGenome - 3)) + 2;
+
+      // init offspringGenome and keepTrack
+      for (unsigned i = 0; i < randomIndex; ++i)
+      {
+        offspringGenome.push_back(_GA.at(i));
+        keepTrack.insert(_GA.at(i));
+      }
+
+      // crosslinking
+
+      for (const auto &gene : _GB)
+      {
+        bool found = keepTrack.find(gene) != keepTrack.end();
+        if (!found)
+        {
+          offspringGenome.push_back(gene);
+        }
+      }
+
+      Solution s = offspringGenome;
+      next_gen.push_back(s);
     }
-
-    return solutions;
   }
+
   int count_population(const Population &pop)
   {
     int count = 0;
@@ -334,37 +362,38 @@ public:
 
     if (random(transform_probabilty))
     {
-        int a[3] = {rand() % solu.size(), rand() % solu.size(), rand() % solu.size()};
-        sort(a, a+3);
-        
+      int a[3] = {rand() % (int)solu.size(), rand() % (int)solu.size(), rand() % (int)solu.size()};
+      std::sort(a, a + 3);
+
+      if (a[1] != a[2])
+      // otherwise this method cannot work
+      {
         Solution s;
         int ptr = 0;
-        for(int i = 0; i < a[0]; ++i)
-            s.set(ptr++, solu[i]);
-        for(int i = a[1] + 1; i < a[2]; ++i)
-            s.set(ptr++, solu[i]);
-        for(int i = a[0]; i <= a[1]; ++i)
-            s.set(ptr++, solu[i]);
-        for(int i = a[2]; i < solu.size(); ++i)
-            s.set(ptr++, solu[i]);
-        // assert(ptr == 36);
-        next_gen.push_back(s);
+        for (int i = 0; i < a[0]; ++i)
+          s.set(ptr++, solu[i]);
 
+        for (int i = a[1] + 1; i < a[2]; ++i)
+          s.set(ptr++, solu[i]);
+
+        for (int i = a[0]; i <= a[1]; ++i)
+          s.set(ptr++, solu[i]);
+
+        for (int i = a[2]; i < (int)solu.size(); ++i)
+          s.set(ptr++, solu[i]);
+
+        next_gen.push_back(s);
+      }
     }
   }
-  void crossover(const Solution &solu, const Species &now_species, Species &next_gen, const Population &population)
+  void do_crossover(const Solution &solu, const Species &now_species, Species &next_gen, const Population &population)
   {
     // crossover
     if (random(crossover_within_species_probability))
     {
       // assert(now_species.size() > 0);
       Solution s2 = now_species[rand() % now_species.size()];
-      auto &&children = crossover(solu, s2);
-      for (auto &&child : children)
-      {
-        // assert(child.size());
-        next_gen.push_back(child);
-      }
+      crossover(solu, s2, next_gen);
     }
 
     if (random(crossover_over_species_probability))
@@ -376,12 +405,8 @@ public:
       // assert(species2.size() > 0);
       const Solution &s2 = species2[rand() % species2.size()];
       // assert(s2.size() > 0);
-      auto &&children = crossover(solu, s2);
-      for (auto &&child : children)
-      {
-        // assert(child.size() > 0);
-        next_gen.push_back(child);
-      }
+      crossover(solu, s2, next_gen);
+      
     }
   }
   Population select(const Population &population)
@@ -440,7 +465,7 @@ public:
           for (const Solution &solu : species)
           {
             mutate(solu, next_gen);
-            crossover(solu, species, next_gen, population);
+            do_crossover(solu, species, next_gen, population);
           }
 
           return next_gen;
@@ -493,7 +518,7 @@ public:
 
     return best;
   }
-};
+}; // namespace Hybrid
 } // namespace Hybrid
 inline std::vector<int> calculate_path(const int *mat1, const int *mat2)
 {

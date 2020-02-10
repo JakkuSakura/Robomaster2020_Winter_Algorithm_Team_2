@@ -108,23 +108,27 @@ public:
     {
         return 36;
     }
-    // void check() const
-    // {
-    //   if (v.size() != 36)
-    //     throw std::invalid_argument("In check(), size of vector is wrong");
+    void check() const
+    {
+        if (v.size() != 36)
+            throw std::invalid_argument("In check(), size of vector is wrong");
+        int counts[36] = {};
+        for (size_t i = 0; i < size(); ++i)
+        {
+            if (v[i] >= 36)
+                throw std::invalid_argument("In check(), value for solution is too large");
 
-    //   for (size_t i = 0; i < size(); ++i)
-    //   {
-    //     if (v[i] >= 36)
-    //       throw std::invalid_argument("In check(), value for this is too large");
+            if (v[i] < -1)
+                throw std::invalid_argument("In check(), value for solution is too small");
 
-    //     if (v[i] < -1)
-    //       throw std::invalid_argument("In check(), value for this is too small");
-
-    //     if (v[i] == -1)
-    //       throw std::invalid_argument("In check(), value for this is incomplete");
-    //   }
-    // }
+            if (v[i] == -1)
+                throw std::invalid_argument("In check(), value for solution is incomplete");
+            counts[v[i]] += 1;
+        }
+        for (size_t i = 0; i < size(); ++i)
+            if(counts[i] != 1)
+                throw std::invalid_argument("In check(), count of value for solution is not exactly one");
+    }
     std::vector<int> to_order() const
     {
         std::vector<int> ord(size());
