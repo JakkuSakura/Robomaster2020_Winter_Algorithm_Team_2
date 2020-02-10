@@ -35,7 +35,7 @@ namespace robomaster
 {
 inline double limit(double v, double abs_limit)
 {
-    if(v > 0)
+    if (v > 0)
         return std::min(v, abs_limit);
     else
         return std::max(v, -abs_limit);
@@ -48,10 +48,11 @@ public:
         pid_init(&pid_x_);
         pid_init(&pid_y_);
         pid_init(&pid_z_);
+        // TODO 机器人运动最高线速度为 2m/s, 最高角速度为 180°/s, 最高线加速度为 2m/(s^2), 最高角加速度为 180°/(s^2)
 
         nh.param<double>("max_speed", max_speed_, 2.0);
-        nh.param<double>("max_x_speed", max_y_speed_, 2.0);
-        nh.param<double>("max_y_speed", max_x_speed_, 2.0);
+        nh.param<double>("max_x_speed", max_x_speed_, 2.0);
+        nh.param<double>("max_y_speed", max_y_speed_, 2.0);
         double max_angle_diff;
         nh.param<double>("max_angle_diff", max_angle_diff, 180);
         max_angle_diff_ = max_angle_diff * M_PI / 180;
@@ -60,7 +61,7 @@ public:
         nh.param<float>("x_i_coeff", pid_x_.ki, 0.0);
         nh.param<float>("x_d_coeff", pid_x_.kd, 0.0);
         nh.param<float>("x_i_limit", pid_x_.integrator_limit, 0.0);
-        
+
         nh.param<float>("y_p_coeff", pid_y_.kp, 10.0);
         nh.param<float>("y_i_coeff", pid_y_.ki, 0.0);
         nh.param<float>("y_d_coeff", pid_y_.kd, 0.0);
@@ -70,13 +71,13 @@ public:
         nh.param<float>("z_i_coeff", pid_z_.ki, 0.0);
         nh.param<float>("z_d_coeff", pid_z_.kd, 0.0);
         nh.param<float>("z_i_limit", pid_z_.integrator_limit, 0.0);
-        
+
         nh.param<int>("plan_frequency", plan_freq_, 50);
         nh.param<double>("goal_tolerance", goal_tolerance_, 0.1);
         nh.param<double>("prune_ahead_distance", prune_ahead_dist_, 0.3);
         nh.param<double>("goal_angle_tolerance", goal_angle_tolerance_, 0.05);
-        goal_angle_tolerance_ =  goal_angle_tolerance_ * M_PI / 180;
-        
+        goal_angle_tolerance_ = goal_angle_tolerance_ * M_PI / 180;
+
         nh.param<std::string>("global_frame", global_frame_, "odom");
 
         tf_listener_ = std::make_shared<tf::TransformListener>();
@@ -85,7 +86,6 @@ public:
 
         global_path_sub_ = nh.subscribe("/global_planner/path", 5, &MyPlanner::GlobalPathCallback, this);
         plan_timer_ = nh.createTimer(ros::Duration(1.0 / plan_freq_), &MyPlanner::Plan, this);
-
     }
     ~MyPlanner() = default;
     void GlobalPathCallback(const nav_msgs::PathConstPtr &msg)
@@ -152,19 +152,29 @@ private:
 
         geometry_msgs::Twist cmd_vel;
 
-        if(diff_yaw < goal_angle_tolerance_)
+        if (abs(diff_yaw) < goal_angle_tolerance_)
         {
-            cmd_vel.linear.x = limit(max_speed_ * cos(diff_yaw), max_x_speed_);
+            cmd_vel.linear.x = max_x_speed_;
             cmd_vel.linear.y = limit(pid_process(&pid_y_, -goal_pose.pose.position.y), max_y_speed_);
+            double speed = sqrt(pow(cmd_vel.linear.x, 2) + pow(cmd_vel.linear.y, 2));
+
+            cmd_vel.linear.x = cmd_vel.linear.x / speed * max_x_speed_;
+            cmd_vel.linear.y = cmd_vel.linear.y / speed * max_y_speed_;
+
             cmd_vel.angular.z = limit(pid_process(&pid_z_, -diff_yaw), max_angle_diff_);
-        } else {
+        }
+        else if (abs(diff_yaw) < M_PI_2)
+        {
             cmd_vel.linear.x = limit(pid_process(&pid_x_, -goal_pose.pose.position.x), max_x_speed_);
             cmd_vel.linear.y = 0;
             cmd_vel.angular.z = max_angle_diff_ * diff_yaw / abs(diff_yaw);
         }
-        
-
-        
+        else
+        {
+            cmd_vel.linear.x = -max_speed_;
+            cmd_vel.linear.y = 0;
+            cmd_vel.angular.z = max_angle_diff_ * diff_yaw / abs(diff_yaw);
+        }
 
         cmd_vel_pub_.publish(cmd_vel);
     }
@@ -175,6 +185,9 @@ private:
         if (dist <= prune_ahead_dist)
         {
             prune_index += 1;
+            pid_reset_integral(&pid_x_);
+            pid_reset_integral(&pid_y_);
+            pid_reset_integral(&pid_z_);
         }
         prune_index = std::min(prune_index, (int)(path.poses.size() - 1));
     }
