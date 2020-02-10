@@ -39,8 +39,7 @@
         <param name="prune_ahead_distance" value="0.15"/>
         <param name="plan_frequency" value="20"/>
 
-        <param name="stuck_vel_dis_error" value="0.2"/>
-        <param name="stuck_vel_error" value="0.1"/>
+        <param name="stuck_vel_error" value="0.5"/>
 
         <!--  for pid -->
 

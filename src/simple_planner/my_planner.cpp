@@ -11,6 +11,7 @@
 #include <iostream>
 #include <complex>
 #include <cmath>
+#include <deque>
 #include "utility.h"
 #include "pid.h"
 #include "pid.c"
@@ -29,16 +30,36 @@ inline double limit(double now, double last, double abs_limit_acc, double delta)
     double acc = limit((now - last) / delta, abs_limit_acc);
     return last + acc * delta;
 }
-inline void show_pose(const geometry_msgs::PoseStamped &pose)
+inline void show_pose(const geometry_msgs::Pose &pose)
 {
     printf("p (%.10lf,%.10lf,%.10lf) o (%.10lf,%.10lf,%.10lf,%.10lf)",
-           pose.pose.position.x,
-           pose.pose.position.y,
-           pose.pose.position.z,
-           pose.pose.orientation.x,
-           pose.pose.orientation.y,
-           pose.pose.orientation.z,
-           pose.pose.orientation.w);
+           pose.position.x,
+           pose.position.y,
+           pose.position.z,
+           pose.orientation.x,
+           pose.orientation.y,
+           pose.orientation.z,
+           pose.orientation.w);
+}
+inline bool same_pose(const geometry_msgs::Pose &p1, const geometry_msgs::Pose &p2, double tolerance)
+{
+    double px1 = p1.position.x, px2 = p2.position.x;
+    double py1 = p1.position.y, py2 = p2.position.y;
+    double pz1 = p1.position.z, pz2 = p2.position.z;
+    double ox1 = p1.orientation.x, ox2 = p2.orientation.x;
+    double oy1 = p1.orientation.y, oy2 = p2.orientation.y;
+    double oz1 = p1.orientation.z, oz2 = p2.orientation.z;
+    double ow1 = p1.orientation.w, ow2 = p2.orientation.w;
+
+    bool flag = std::abs(px1 - px2) < tolerance &&
+                std::abs(py1 - py2) < tolerance &&
+                std::abs(pz1 - px2) < tolerance &&
+                std::abs(ox1 - ox2) < tolerance &&
+                std::abs(oy1 - oy2) < tolerance &&
+                std::abs(oz1 - oz2) < tolerance &&
+                std::abs(ow1 - ow2) < tolerance;
+
+    return flag;
 }
 
 template <typename T>
@@ -56,7 +77,7 @@ public:
         pid_init(&pid_y_);
         pid_init(&pid_z_);
 
-        nh.param<double>("stuck_vel_dis_error", stuck_vel_dis_error_, 0.5);
+        
         nh.param<double>("stuck_vel_error", stuck_vel_error_, 0.1);
 
         nh.param<double>("max_speed", max_speed_, 2.0);
@@ -152,24 +173,33 @@ private:
             // 4. Get prune index from given global path
             next_pose(robot_pose, global_path_, prune_index_, prune_ahead_dist_);
 
-            generate_velocity_command(robot_pose, global_path_.poses[prune_index_]);
+            geometry_msgs::PoseStamped global_robot_pose;
+            global_robot_pose.header.frame_id = global_frame_;
+
+            TransformPose(path2global_transform_, robot_pose, global_robot_pose);
+
+            generate_velocity_command(global_robot_pose, global_path_.poses[prune_index_]);
         }
     }
     void fetch_odem(const nav_msgs::Odometry::ConstPtr &msg)
     {
-        pose_and_twist_ = *msg;
+        pose_and_twist_.push_back(*msg);
+        while(ros::Time::now() - pose_and_twist_.front().header.stamp > ros::Duration(1.0))
+            pose_and_twist_.pop_front();
     }
+
+    // the robot pose must be in the same frame as pose_and_twist, aka global_frame or odom frame
     void generate_velocity_command(const geometry_msgs::PoseStamped &robot, geometry_msgs::PoseStamped &goal)
     {
         double last_cmd_speed = sqrt(pow(last_cmd_vel_.linear.x, 2) + pow(last_cmd_vel_.linear.y, 2));
-        double real_speed = sqrt(pow((pose_and_twist_.pose.pose.position.x - robot.pose.position.x ) / time_delta_, 2) + pow((pose_and_twist_.pose.pose.position.y - robot.pose.position.y)/time_delta_, 2));
 
-        bool is_stuck = real_speed < stuck_vel_error_ && std::abs(real_speed - last_cmd_speed) > stuck_vel_dis_error_;
-        if (is_stuck)
+        bool is_stuck = last_cmd_speed > stuck_vel_error_ && same_pose(robot.pose, pose_and_twist_.front().pose.pose, 1e-5);
+
+        if(is_stuck)
         {
-            ROS_WARN("Got stuck! %lf vs %lf", last_cmd_speed, real_speed);
+            ROS_WARN("Got stuck! cmd_speed.linear.x=%lf", last_cmd_vel_.linear.x);
             geometry_msgs::Twist cmd_vel;
-            cmd_vel.linear.x = -max_speed_;
+            cmd_vel.linear.x = -max_speed_ * sign(last_cmd_vel_.linear.x);
             cmd_vel.linear.y = 0;
             cmd_vel.angular.z = 0;
             publish_velocity(cmd_vel);
@@ -237,6 +267,7 @@ private:
         last_cmd_vel_ = vel;
         cmd_vel_pub_.publish(vel);
     }
+
     // update prune_index when arriving at a certain point
     void next_pose(geometry_msgs::PoseStamped &robot_pose, nav_msgs::Path &path, int &prune_index, double prune_ahead_dist)
     {
@@ -267,7 +298,7 @@ private:
     nav_msgs::Path global_path_;
 
     geometry_msgs::Twist last_cmd_vel_;
-    nav_msgs::Odometry pose_and_twist_;
+    std::deque<nav_msgs::Odometry> pose_and_twist_;
 
     double max_speed_;
     double max_acceleration_;
@@ -285,7 +316,6 @@ private:
     pid_ctrl_t pid_x_;
     pid_ctrl_t pid_y_;
     pid_ctrl_t pid_z_;
-    double stuck_vel_dis_error_;
     double stuck_vel_error_;
 };
 } // namespace robomaster

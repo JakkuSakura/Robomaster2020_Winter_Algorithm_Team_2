@@ -196,6 +196,12 @@ public:
 
 inline void show_debug_data(const int *mat1, const int *mat2, const Solution &result)
 {
+    std::cout << "Map: ";
+    for (int i = 0; i < 36; i++)
+    {
+        std::cout << mat2[i] << " ";
+    }
+    std::cout << std::endl;
     std::cout << "Result: ";
     for (int i = 0; i < 36; i++)
     {
