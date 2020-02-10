@@ -193,7 +193,7 @@ private:
     {
         double last_cmd_speed = sqrt(pow(last_cmd_vel_.linear.x, 2) + pow(last_cmd_vel_.linear.y, 2));
 
-        bool is_stuck = last_cmd_speed > stuck_vel_error_ && same_pose(robot.pose, pose_and_twist_.front().pose.pose, 1e-5);
+        bool is_stuck = last_cmd_speed > stuck_vel_error_ && same_pose(pose_and_twist_.front().pose.pose, pose_and_twist_.back().pose.pose, 1e-5);
 
         if(is_stuck)
         {
