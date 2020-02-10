@@ -4,8 +4,6 @@
     <node pkg="simple_planner" type="global_planner" name="global_planner" respawn="true" output="screen" >
         <param name="global_frame" value="map"/>
         <param name="plan_frequency" value="50"/>
-        <param name="point_num" value="10"/>
-        <param name="waypoint_distance" value="0.3"/>
     </node>
 
     <!-- Run the local trajectory planner -->
@@ -39,16 +37,22 @@
         <param name="global_frame" value="odom"/>
         <param name="goal_tolerance" value="0.15"/>
         <param name="prune_ahead_distance" value="0.15"/>
-        <param name="plan_frequency" value="30"/>
+        <param name="plan_frequency" value="20"/>
+
+        <param name="stuck_vel_dis_error" value="0.2"/>
+        <param name="stuck_vel_error" value="0.1"/>
 
         <!--  for pid -->
+
         <param name="max_speed" value="2"/>
         <param name="max_acceleration" value="2"/>
 
         <param name="max_angle_diff" value="180"/>
         <param name="max_angular_acceleration" value="180"/>
 
-        <param name="goal_angle_tolerance" value="30"/>
+        <param name="rush_angle_tolerance" value="30"/>
+        <!-- <param name="turn_angle_tolerance" value="60"/> -->
+        
 
         <param name="max_x_speed" value="2"/>
         <param name="x_p_coeff" value="3"/>
