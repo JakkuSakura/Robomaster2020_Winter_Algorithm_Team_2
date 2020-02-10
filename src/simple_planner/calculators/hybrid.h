@@ -109,13 +109,14 @@ class Graph
   float same_speices_distance_threshold = 10;
 
   int generation_number = 10;
-  int thread_number = 1;
+  int thread_number = 4;
 
   double inherit_probability = 0.03;
   double swap_probability = 1;
   double reverse_probability = 1;
   double shuffle_probability = 1;
   double transform_probabilty = 1;
+
   double crossover_within_species_probability = 0.03;
   double crossover_over_species_probability = 0.01;
 
