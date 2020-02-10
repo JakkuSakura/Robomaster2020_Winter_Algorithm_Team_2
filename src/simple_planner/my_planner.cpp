@@ -225,6 +225,7 @@ private:
             cmd_vel.angular.z = 0;
             publish_velocity(cmd_vel);
             ros::Duration(stuck_back_up_time_).sleep();
+            publish_velocity(geometry_msgs::Twist());
             return;
         }
 
