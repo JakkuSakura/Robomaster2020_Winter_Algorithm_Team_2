@@ -235,17 +235,12 @@ private:
         {
             cmd_vel.linear.x = max_x_speed_;
             cmd_vel.linear.y = limit(pid_process(&pid_y_, -goal_pose.pose.position.y), max_y_speed_);
-
-            double speed = sqrt(pow(cmd_vel.linear.x, 2) + pow(cmd_vel.linear.y, 2));
-
-            cmd_vel.linear.x = cmd_vel.linear.x / speed * max_x_speed_;
-            cmd_vel.linear.y = cmd_vel.linear.y / speed * max_y_speed_;
             cmd_vel.angular.z = limit(pid_process(&pid_z_, -diff_yaw), max_angle_diff_);
         }
         else if (std::abs(diff_yaw) < M_PI_2)
         {
 
-            cmd_vel.linear.x = limit(pid_process(&pid_x_, -goal_pose.pose.position.x), max_x_speed_);
+            cmd_vel.linear.x = max_x_speed_;
             cmd_vel.linear.y = 0;
             cmd_vel.angular.z = max_angle_diff_ * sign(diff_yaw);
         }
@@ -263,6 +258,11 @@ private:
     void limit_speed(geometry_msgs::Twist &cmd_vel)
     {
 
+        double speed = sqrt(pow(cmd_vel.linear.x, 2) + pow(cmd_vel.linear.y, 2));
+
+        cmd_vel.linear.x = cmd_vel.linear.x / speed * max_x_speed_;
+        cmd_vel.linear.y = cmd_vel.linear.y / speed * max_y_speed_;
+        
         cmd_vel.linear.x = limit(cmd_vel.linear.x, last_cmd_vel_.linear.x, max_acceleration_, time_delta_);
         cmd_vel.linear.y = limit(cmd_vel.linear.y, last_cmd_vel_.linear.y, max_acceleration_, time_delta_);
 
