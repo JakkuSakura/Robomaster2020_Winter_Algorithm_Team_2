@@ -59,6 +59,6 @@ if __name__ == '__main__':
     thread.start_new_thread(listener, ())
     datasets = [
         MyDataset("Speed", ticks, speed),
-        MyDataset("Accleration", ticks, acc),
+        MyDataset("Acceleration", ticks, acc),
     ]
     graph.main("ROS Monitor", datasets, mutex)
