@@ -80,7 +80,6 @@ public:
         pid_init(&pid_z_);
 
         nh.param<double>("stuck_vel_threshold", stuck_vel_threshold_, 0.5);
-
         nh.param<double>("stuck_detection_time", stuck_detection_time_, 0.2);
         nh.param<double>("stuck_back_up_time", stuck_back_up_time_, 0.5);
 
@@ -232,7 +231,6 @@ private:
         }
 
         double last_cmd_speed = hypot(last_cmd_vel_.linear.x, last_cmd_vel_.linear.y);
-
         bool is_stuck = last_cmd_speed > stuck_vel_threshold_ && same_pose(pose_and_twist_.front().pose.pose, pose_and_twist_.back().pose.pose, 1e-5);
 
         if (is_stuck)
