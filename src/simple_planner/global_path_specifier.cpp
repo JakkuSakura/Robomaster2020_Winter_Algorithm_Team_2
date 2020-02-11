@@ -19,6 +19,7 @@
 #include <tf/transform_listener.h>
 
 #include <nav_msgs/Path.h>
+#include <std_msgs/String.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <visualization_msgs/Marker.h>
 
@@ -28,6 +29,18 @@
 #include "utility.h"
 
 namespace robomaster{
+
+inline void show_pose(const geometry_msgs::Pose &pose)
+{
+    printf(__FILE__" p (%.2lf,%.2lf,%.2lf) o (%.2lf,%.2lf,%.2lf,%.2lf)\n",
+           pose.position.x,
+           pose.position.y,
+           pose.position.z,
+           pose.orientation.x,
+           pose.orientation.y,
+           pose.orientation.z,
+           pose.orientation.w);
+}
 class GlobalPathSpecifier{
  public:
   GlobalPathSpecifier(ros::NodeHandle& given_nh):
@@ -47,8 +60,9 @@ class GlobalPathSpecifier{
     // 2D Nav Goal to set point
     waypoint_sub_ = nh.subscribe("/clicked_point", 5, &GlobalPathSpecifier::WaypointCallback,this);
     record_sub_ = nh.subscribe("/initialpose",1, &GlobalPathSpecifier::RecordCallback,this);
+    path_status_sub_ = nh.subscribe("/local_planner/status",1, &GlobalPathSpecifier::PathStatus,this);
 
-//    plan_timer_ = nh.createTimer(ros::Duration(1.0/plan_freq_),&GlobalPathSpecifier::Plan,this);
+    // plan_timer_ = nh.createTimer(ros::Duration(1.0/plan_freq_),&GlobalPathSpecifier::Plan,this);
 
     record_timer_ = nh.createTimer(ros::Duration(0.02),&GlobalPathSpecifier::Record,this);
     record_timer_.stop();
@@ -64,7 +78,14 @@ class GlobalPathSpecifier{
 //  void Plan(const ros::TimerEvent& event){
 //  global_path_pub_.publish(path_);
 //  }
-
+  void PathStatus(const std_msgs::String &msg)
+  {
+    if(msg.data == "done")
+    {
+      global_path_pub_.publish(path_);
+      ROS_INFO("Replay recorded path");
+    }
+  }
   void Record(const ros::TimerEvent& event){
 
     geometry_msgs::PoseStamped tmp_pose;
@@ -178,6 +199,7 @@ class GlobalPathSpecifier{
 
   ros::Subscriber waypoint_sub_;
   ros::Subscriber record_sub_;
+  ros::Subscriber path_status_sub_;
 
   ros::Timer record_timer_;
 

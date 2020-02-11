@@ -4,6 +4,7 @@
 #include <nav_msgs/Path.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Twist.h>
+#include <std_msgs/String.h>
 
 #include <Eigen/Eigen>
 #include <chrono>
@@ -32,7 +33,7 @@ inline double limit(double now, double last, double abs_limit_acc, double delta)
 }
 inline void show_pose(const geometry_msgs::Pose &pose)
 {
-    printf("p (%.10lf,%.10lf,%.10lf) o (%.10lf,%.10lf,%.10lf,%.10lf)\n",
+    printf(__FILE__" p (%.2lf,%.2lf,%.2lf) o (%.2lf,%.2lf,%.2lf,%.2lf)\n",
            pose.position.x,
            pose.position.y,
            pose.position.z,
@@ -128,7 +129,10 @@ public:
 
         cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
+        status_pub_ = nh.advertise<std_msgs::String>("/local_planner/status", 1);
+
         global_path_sub_ = nh.subscribe("/global_planner/path", 5, &MyPlanner::fetch_global_path, this);
+
         odom_sub_ = nh.subscribe("/odom", 100, &MyPlanner::fetch_odem, this);
         plan_timer_ = nh.createTimer(ros::Duration(time_delta_), &MyPlanner::plan, this);
         reset_cmd_vel_ = false;
@@ -136,17 +140,6 @@ public:
     ~MyPlanner() = default;
 
 private:
-    void fetch_global_path(const nav_msgs::PathConstPtr &msg)
-    {
-        ROS_INFO("Received path");
-
-        if (!msg->poses.empty())
-        {
-            global_path_ = *msg;
-            prune_index_ = 0;
-            plan_ = true;
-        }
-    }
     void plan(const ros::TimerEvent &event)
     {
         if (plan_)
@@ -163,12 +156,13 @@ private:
                             global_path_.header.frame_id, global_path_.header.stamp,
                             path2global_transform_); //source_time needs decided
 
-            // 2. Get current robot pose in global path frame
-            geometry_msgs::PoseStamped robot_pose;
-            GetGlobalRobotPose(tf_listener_, global_path_.header.frame_id, robot_pose);
+            geometry_msgs::PoseStamped global_robot_pose;
+            global_robot_pose.header.stamp = ros::Time::now();
+            global_robot_pose.header.frame_id = global_frame_;
+            global_robot_pose.pose = pose_and_twist_.front().pose.pose;
 
             // 3. Check if robot has already arrived with given distance tolerance
-            if (GetEuclideanDistance(robot_pose, global_path_.poses.back()) <= goal_tolerance_ && prune_index_ == global_path_.poses.size() - 1)
+            if (GetEuclideanDistance(global_robot_pose, global_path_.poses.back()) <= goal_tolerance_ && prune_index_ == global_path_.poses.size() - 1)
             {
                 plan_ = false;
                 geometry_msgs::Twist cmd_vel;
@@ -176,24 +170,40 @@ private:
                 cmd_vel.linear.y = 0;
                 cmd_vel.angular.z = 0;
                 publish_velocity(cmd_vel);
+                std_msgs::String msg;
+                msg.data = "done";
+                status_pub_.publish(msg);
+
                 ROS_INFO("Planning Success!");
                 return;
             }
 
-            // 4. Get prune index from given global path
-            next_pose(robot_pose, global_path_, prune_index_, prune_ahead_dist_);
-
-            geometry_msgs::PoseStamped global_robot_pose;
-            global_robot_pose.header.frame_id = global_frame_;
-
-            TransformPose(path2global_transform_, robot_pose, global_robot_pose);
+            // Get prune index from given global path
+            next_pose(global_robot_pose, global_path_, prune_index_, prune_ahead_dist_);
 
             generate_velocity_command(global_robot_pose, global_path_.poses[prune_index_]);
         }
     }
-    nav_msgs::Odometry get_current_pose_and_twist()
+    void fetch_global_path(const nav_msgs::PathConstPtr &msg)
     {
-        return pose_and_twist_.front();
+        ROS_INFO("Received path");
+
+        if (!msg->poses.empty())
+        {
+            global_path_ = *msg;
+            prune_index_ = 0;
+            plan_ = true;
+            for (size_t i = 0; i < global_path_.poses.size(); i++)
+            {
+                geometry_msgs::PoseStamped goal_pose;
+                if (!TransformPose(tf_listener_, global_frame_, global_path_.poses[i], goal_pose))
+                {
+                    ROS_WARN("Error: cannot get goal pose in global_frame_ frame");
+                }
+                show_pose(global_path_.poses[i].pose);
+                global_path_.poses[i] = goal_pose;
+            }
+        }
     }
     void fetch_odem(const nav_msgs::Odometry::ConstPtr &msg)
     {
@@ -205,7 +215,6 @@ private:
     // the robot pose must be in the same frame as pose_and_twist, aka global_frame or odom frame
     void generate_velocity_command(const geometry_msgs::PoseStamped &robot, geometry_msgs::PoseStamped &goal)
     {
-
         geometry_msgs::PoseStamped goal_pose;
         goal.header.stamp = ros::Time::now();
         //1. Get goal pose in the base_link frame
@@ -222,7 +231,7 @@ private:
             return;
         }
 
-        double last_cmd_speed = sqrt(pow(last_cmd_vel_.linear.x, 2) + pow(last_cmd_vel_.linear.y, 2));
+        double last_cmd_speed = hypot(last_cmd_vel_.linear.x, last_cmd_vel_.linear.y);
 
         bool is_stuck = last_cmd_speed > stuck_vel_threshold_ && same_pose(pose_and_twist_.front().pose.pose, pose_and_twist_.back().pose.pose, 1e-5);
 
@@ -240,15 +249,16 @@ private:
         }
 
         double turning_angle = 0;
-        if (prune_index_ + 1 < global_frame_.size())
+        if (prune_index_ + 1 < global_path_.poses.size())
         {
             const auto &next_goal = global_path_.poses[prune_index_ + 1];
-            double direction = GetYawFromOrientation(get_current_pose_and_twist().pose.pose.orientation);
+            // double direction = GetYawFromOrientation(robot.pose.orientation);
+            double direction = atan2(goal.pose.position.y - robot.pose.position.y, goal.pose.position.x - robot.pose.position.x);
             double direction_next = atan2(next_goal.pose.position.y - goal.pose.position.y, next_goal.pose.position.x - goal.pose.position.x);
             turning_angle = distance_in_radius(direction, direction_next);
         }
 
-        double dist_goal = sqrt(pow(goal_pose.pose.position.x, 2) + pow(goal_pose.pose.position.x, 2));
+        double dist_goal = hypot(goal_pose.pose.position.x, goal_pose.pose.position.x);
         geometry_msgs::Twist cmd_vel;
 
         if (std::abs(diff_yaw) < rush_angle_tolerance_)
@@ -275,7 +285,12 @@ private:
         }
         else
         {
-            cmd_vel.linear.x = -max_x_speed_;
+            if (dist_goal > rush_dist_tolerance_ || turning_angle < soft_turn_angle_tolerance_)
+                cmd_vel.linear.x = -max_x_speed_;
+            else
+            {
+                cmd_vel.linear.x = -limit(pid_process(&pid_x_, -dist_goal), max_x_speed_);
+            }
             cmd_vel.linear.y = 0;
             cmd_vel.angular.z = max_angle_diff_ * sign(diff_yaw);
         }
@@ -287,7 +302,7 @@ private:
     void limit_speed(geometry_msgs::Twist &cmd_vel)
     {
 
-        double speed = sqrt(pow(cmd_vel.linear.x, 2) + pow(cmd_vel.linear.y, 2));
+        double speed = hypot(cmd_vel.linear.x, cmd_vel.linear.y);
 
         cmd_vel.linear.x = limit(cmd_vel.linear.x, last_cmd_vel_.linear.x, max_acceleration_, time_delta_);
         cmd_vel.linear.y = limit(cmd_vel.linear.y, last_cmd_vel_.linear.y, max_acceleration_, time_delta_);
@@ -326,6 +341,7 @@ private:
     ros::Subscriber odom_sub_;
     ros::Subscriber global_path_sub_;
     ros::Publisher cmd_vel_pub_;
+    ros::Publisher status_pub_;
 
     bool plan_;
     int prune_index_;

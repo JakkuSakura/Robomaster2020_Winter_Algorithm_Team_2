@@ -50,7 +50,7 @@ inline void lookup(const int *id1_, const int *id2_, int id, float &x, float &y)
 
 inline float dist(float x1, float y1, float x2, float y2)
 {
-    return sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
+    return hypot(x1 - x2, y1 - y2);
 }
 template<typename T>
 inline float distance_in_radius(T alpha, T beta)

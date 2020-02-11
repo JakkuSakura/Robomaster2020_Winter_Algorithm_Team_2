@@ -22,6 +22,9 @@ include_directories(${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
 add_executable(global_path_specifier global_path_specifier.cpp)
 target_link_libraries(global_path_specifier ${catkin_LIBRARIES})
 
+add_executable(global_planner global_planner.cpp)
+target_link_libraries(global_planner ${catkin_LIBRARIES})
+
 add_executable(my_planner my_planner.cpp)
 target_link_libraries(my_planner ${catkin_LIBRARIES})
 

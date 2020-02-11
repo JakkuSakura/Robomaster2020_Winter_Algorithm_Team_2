@@ -20,6 +20,17 @@
 namespace robomaster
 {
 
+inline void show_pose(const geometry_msgs::Pose &pose)
+{
+    printf(__FILE__" p (%.2lf,%.2lf,%.2lf) o (%.2lf,%.2lf,%.2lf,%.2lf)\n",
+           pose.position.x,
+           pose.position.y,
+           pose.position.z,
+           pose.orientation.x,
+           pose.orientation.y,
+           pose.orientation.z,
+           pose.orientation.w);
+}
 class GlobalPlanner
 {
 public:
@@ -55,12 +66,8 @@ private:
   }
   void Plan(const int *mat1, const int *mat2)
   {
+
     std::vector<int> best = calculate_path(mat1, mat2);
-    nav_msgs::Path path;
-
-    path.header.stamp = ros::Time::now();
-    path.header.frame_id = global_frame_;
-
 #ifdef GENERATE_DATA
     std::ofstream output(data_filename, std::ios::app);
     output << "blue: ";
@@ -75,32 +82,40 @@ private:
     {
       output << best[i] << " ";
     }
-    output << std::endl; 
+    output << std::endl;
     output.close();
 
 #endif
+    nav_msgs::Path path;
+
+    path.header.stamp = ros::Time::now();
+    path.header.frame_id = global_frame_;
 
     for (size_t i = 0; i < 36; i++)
     {
 
       {
+        float x, y;
+        lookup(mat1, mat2, best[i], x, y);
         geometry_msgs::PoseStamped pose;
         pose.header.stamp = ros::Time::now();
         pose.header.frame_id = global_frame_;
-        float x, y;
-        lookup(mat1, mat2, best[i], x, y);
         pose.pose.position.x = y, pose.pose.position.y = x;
+        pose.pose.orientation.w = 1;
+        
         path.poses.push_back(pose);
       }
 
       {
+        float x, y;
+        lookup(mat1, mat2, pair(best[i]), x, y);
+
         geometry_msgs::PoseStamped pose;
         pose.header.stamp = ros::Time::now();
         pose.header.frame_id = global_frame_;
-
-        float x, y;
-        lookup(mat1, mat2, pair(best[i]), x, y);
         pose.pose.position.x = y, pose.pose.position.y = x;
+        pose.pose.orientation.w = 1;
+        
         path.poses.push_back(pose);
       }
     }
