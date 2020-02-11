@@ -14,7 +14,8 @@ inline int pair(int x)
     }
 }
 // get the location from id and type
-inline void lookup(const int *id1_, const int *id2_, int id, float &x, float &y)
+template<typename M1, typename M2>
+inline void lookup(const M1 &id1_, const M2 &id2_, int id, float &x, float &y)
 {
     int type = id < 36 ? 1 : 2;
     int ans = 0;
