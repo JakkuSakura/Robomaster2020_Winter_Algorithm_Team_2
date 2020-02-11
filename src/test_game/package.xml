@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="2">
+    <name>test_game</name>
+    <version>0.1.0</version>
+    <description>A game ROS packages for RoboMaster 2020 Winter Camp </description>
+    <maintainer email="charles.yang@dji.com">Charles Yang</maintainer>
+    <license>BSD</license>
+    <url type="website">https://github.com/robomaster</url>
+    <author email="charles.yang@dji.com">Charles Yang</author>
+
+    <buildtool_depend>catkin</buildtool_depend>
+
+    <depend>roscpp</depend>
+    <depend>tf</depend>
+    <depend>std_msgs</depend>
+    <depend>visualization_msgs</depend>
+</package>

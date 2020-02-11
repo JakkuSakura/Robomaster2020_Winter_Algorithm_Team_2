@@ -1,0 +1,8 @@
+<launch>
+    
+    <include file="$(find simple_bringup)/launch/simulator.launch" />
+
+    <!-- choose generate model. 0：random dataset     1～5：indicate dataset -->
+    <param name="gen_points_model" value="3"/>
+    <node name="game" pkg="simple_game" type="game" output="screen"/>
+</launch>

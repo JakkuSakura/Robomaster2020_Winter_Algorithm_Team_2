@@ -1,5 +1,5 @@
 #!/bin/sh
 while :
 do
-./run_game.sh
+./run_test_game.sh
 done
