@@ -200,7 +200,7 @@ private:
                 {
                     ROS_WARN("Error: cannot get goal pose in global_frame_ frame");
                 }
-                show_pose(global_path_.poses[i].pose);
+                // show_pose(global_path_.poses[i].pose);
                 global_path_.poses[i] = goal_pose;
             }
         }
