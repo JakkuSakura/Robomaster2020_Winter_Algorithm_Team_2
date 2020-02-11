@@ -12,7 +12,8 @@ const float TIME_LIMIT = 15; // secs
 // GLOBAL PATH GENERATOR
 // #include "./simple_planner/calculators/random.h"
 // #include "./simple_planner/calculators/a_star.h"
-#include "./simple_planner/calculators/hybrid.h"
+// #include "./simple_planner/calculators/hybrid.h"
+#include "./simple_planner/calculators/climbing.h"
 
 
 #endif // CONFIG_H

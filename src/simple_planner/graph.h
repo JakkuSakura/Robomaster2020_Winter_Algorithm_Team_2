@@ -2,6 +2,7 @@
 #define GRAPH_H
 #include <vector>
 #include <cmath>
+#include <iostream>
 inline int pair(int x)
 {
     if (x < 36)
@@ -14,8 +15,8 @@ inline int pair(int x)
     }
 }
 // get the location from id and type
-template<typename M1, typename M2>
-inline void lookup(const M1 &id1_, const M2 &id2_, int id, float &x, float &y)
+template<typename M1, typename M2, typename T>
+inline void lookup(const M1 &id1_, const M2 &id2_, int id, T &x, T &y)
 {
     int type = id < 36 ? 1 : 2;
     int ans = 0;
