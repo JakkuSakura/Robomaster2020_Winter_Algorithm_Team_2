@@ -267,6 +267,7 @@ private:
                 cmd_vel.linear.x = max_x_speed_;
             else
             {
+                // FIXME decelerating before turning around not working ideally
                 cmd_vel.linear.x = limit(pid_process(&pid_x_, -dist_goal), max_x_speed_);
             }
             cmd_vel.linear.y = limit(pid_process(&pid_y_, -goal_pose.pose.position.y), max_y_speed_);
