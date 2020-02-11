@@ -153,7 +153,7 @@ int main(int argc, char **argv)
     int neighbor_index;
     ros::Time start;
     std::vector<int> pair;
-    ros::Rate rate(20);
+    ros::Rate rate(30);
     while (ros::ok())
     {
         GetGlobalRobotPose(tf_listener, "map", robot_pose);
