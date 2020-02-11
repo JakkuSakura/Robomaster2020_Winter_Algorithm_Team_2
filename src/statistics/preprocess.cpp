@@ -55,10 +55,9 @@ int main()
     std::string buf;
     std::vector<playthrough> playthroughs;
     playthrough play;
-    while (input)
+    while (!input.eof())
     {
         input >> buf;
-        std::cout << "read a line" << std::endl;
         if(buf == "blue:"){
             play.blue.clear();
             for (size_t j = 0; j < 36; j++)
@@ -77,9 +76,11 @@ int main()
             }
         } else if (isdigit(buf[0]))
         {
-            input >> play.actual_time;
+            sscanf(buf.c_str(), "%lf", &play.actual_time);
             playthroughs.push_back(play);
-            std::cout << "pushed one" << std::endl;
+            std::cout << "pushed one of " << play.actual_time << std::endl;
+        } else {
+            std::cout << "error: " << buf << std::endl;
         }
     }
     std::ofstream output("/home/jack/stat.txt");
