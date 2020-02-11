@@ -33,7 +33,7 @@ inline double limit(double now, double last, double abs_limit_acc, double delta)
 }
 inline void show_pose(const geometry_msgs::Pose &pose)
 {
-    printf(__FILE__" p (%.2lf,%.2lf,%.2lf) o (%.2lf,%.2lf,%.2lf,%.2lf)\n",
+    printf(__FILE__ " p (%.2lf,%.2lf,%.2lf) o (%.2lf,%.2lf,%.2lf,%.2lf)\n",
            pose.position.x,
            pose.position.y,
            pose.position.z,
@@ -41,6 +41,12 @@ inline void show_pose(const geometry_msgs::Pose &pose)
            pose.orientation.y,
            pose.orientation.z,
            pose.orientation.w);
+}
+inline bool compare_velocity(const geometry_msgs::Twist &t1, const geometry_msgs::Twist &t2, double tolerance)
+{
+    return std::abs(t1.linear.x - t2.linear.x) < tolerance &&
+           std::abs(t1.linear.y - t2.linear.y) < tolerance &&
+           std::abs(t1.angular.z - t2.angular.z) < tolerance;
 }
 inline bool same_pose(const geometry_msgs::Pose &p1, const geometry_msgs::Pose &p2, double tolerance)
 {
@@ -134,54 +140,54 @@ public:
 
         odom_sub_ = nh.subscribe("/odom", 100, &MyPlanner::fetch_odem, this);
         plan_timer_ = nh.createTimer(ros::Duration(time_delta_), &MyPlanner::plan, this);
-        reset_cmd_vel_ = false;
+        reach_want_cmd_vel_ = false;
+        wanted_cmd_vel_expiring_time_ - ros::Time::now();
     }
     ~MyPlanner() = default;
 
 private:
     void plan(const ros::TimerEvent &event)
     {
-        if (plan_)
+        if (!plan_)
+            return;
+
+        if (ros::Time::now() < wanted_cmd_vel_expiring_time_)
         {
-            if (ros::Time::now() < last_cmd_vel_expiring_time_)
-                return;
-            if (reset_cmd_vel_)
+            execute_velocity();
+            if (reach_want_cmd_vel_ && compare_velocity(wanted_cmd_vel_, last_cmd_vel_, 1e-3))
             {
-                publish_velocity(geometry_msgs::Twist());
-                reset_cmd_vel_ = false;
-            }
-            // 1. Update the transform from global path frame to local planner frame
-            UpdateTransform(tf_listener_, global_frame_,
-                            global_path_.header.frame_id, global_path_.header.stamp,
-                            path2global_transform_); //source_time needs decided
-
-            geometry_msgs::PoseStamped global_robot_pose;
-            global_robot_pose.header.stamp = ros::Time::now();
-            global_robot_pose.header.frame_id = global_frame_;
-            global_robot_pose.pose = pose_and_twist_.front().pose.pose;
-
-            // 3. Check if robot has already arrived with given distance tolerance
-            if (GetEuclideanDistance(global_robot_pose, global_path_.poses.back()) <= goal_tolerance_ && prune_index_ == global_path_.poses.size() - 1)
-            {
-                plan_ = false;
-                geometry_msgs::Twist cmd_vel;
-                cmd_vel.linear.x = 0;
-                cmd_vel.linear.y = 0;
-                cmd_vel.angular.z = 0;
-                publish_velocity(cmd_vel);
-                std_msgs::String msg;
-                msg.data = "done";
-                status_pub_.publish(msg);
-
-                ROS_INFO("Planning Success!");
-                return;
+                wanted_cmd_vel_expiring_time_ = ros::Time::now();
             }
 
-            // Get prune index from given global path
-            next_pose(global_robot_pose, global_path_, prune_index_, prune_ahead_dist_);
-
-            generate_velocity_command(global_robot_pose, global_path_.poses[prune_index_]);
+            return;
         }
+
+        // 1. Update the transform from global path frame to local planner frame
+        UpdateTransform(tf_listener_, global_frame_,
+                        global_path_.header.frame_id, global_path_.header.stamp,
+                        path2global_transform_); //source_time needs decided
+
+        geometry_msgs::PoseStamped global_robot_pose;
+        global_robot_pose.header.stamp = ros::Time::now();
+        global_robot_pose.header.frame_id = global_frame_;
+        global_robot_pose.pose = pose_and_twist_.front().pose.pose;
+
+        // 3. Check if robot has already arrived with given distance tolerance
+        if (GetEuclideanDistance(global_robot_pose, global_path_.poses.back()) <= goal_tolerance_ && prune_index_ == global_path_.poses.size() - 1)
+        {
+            plan_ = false;
+            want_velocity(geometry_msgs::Twist(), 5, true);
+            std_msgs::String msg;
+            msg.data = "done";
+            status_pub_.publish(msg);
+            ROS_INFO("Planning Success!");
+            return;
+        }
+
+        // Get prune index from given global path
+        next_pose(global_robot_pose, global_path_, prune_index_, prune_ahead_dist_);
+
+        generate_velocity_command(global_robot_pose, global_path_.poses[prune_index_]);
     }
     void fetch_global_path(const nav_msgs::PathConstPtr &msg)
     {
@@ -241,8 +247,7 @@ private:
             cmd_vel.linear.y = max_y_speed_ * sign(goal_pose.pose.position.y);
             cmd_vel.angular.z = 0;
 
-            publish_velocity(cmd_vel, stuck_back_up_time_);
-            reset_cmd_vel_ = true;
+            want_velocity(cmd_vel, stuck_back_up_time_);
             return;
         }
 
@@ -294,9 +299,7 @@ private:
             cmd_vel.angular.z = max_angle_diff_ * sign(diff_yaw);
         }
 
-        limit_speed(cmd_vel);
-
-        publish_velocity(cmd_vel);
+        want_velocity(cmd_vel);
     }
     void limit_speed(geometry_msgs::Twist &cmd_vel)
     {
@@ -309,11 +312,20 @@ private:
         // cmd_vel.angular.z = limit(cmd_vel.angular.z, last_cmd_vel_.angular.z, max_angular_acceleration_, time_delta_);
     }
 
-    void publish_velocity(const geometry_msgs::Twist &vel, double keep_time = 0)
+    void want_velocity(const geometry_msgs::Twist &vel, double keep_time = 0, bool reach = false)
     {
-        last_cmd_vel_ = vel;
-        last_cmd_vel_expiring_time_ = ros::Time::now() + ros::Duration(keep_time);
-        cmd_vel_pub_.publish(vel);
+        reach_want_cmd_vel_ = reach;
+        wanted_cmd_vel_ = vel;
+        wanted_cmd_vel_expiring_time_ = ros::Time::now() + ros::Duration(keep_time);
+        execute_velocity();
+    }
+
+    void execute_velocity()
+    {
+        geometry_msgs::Twist new_vel = wanted_cmd_vel_;
+        limit_speed(new_vel);
+        last_cmd_vel_ = new_vel;
+        cmd_vel_pub_.publish(new_vel);
     }
 
     // update prune_index when arriving at a certain point
@@ -347,8 +359,10 @@ private:
     nav_msgs::Path global_path_;
 
     geometry_msgs::Twist last_cmd_vel_;
-    ros::Time last_cmd_vel_expiring_time_;
-    bool reset_cmd_vel_;
+    geometry_msgs::Twist wanted_cmd_vel_;
+
+    ros::Time wanted_cmd_vel_expiring_time_;
+    bool reach_want_cmd_vel_;
 
     std::deque<nav_msgs::Odometry> pose_and_twist_;
 
