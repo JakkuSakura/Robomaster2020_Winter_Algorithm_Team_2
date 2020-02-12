@@ -10,9 +10,6 @@
 #include <cmath>
 namespace Climbing
 {
-    
-
-using namespace std;
 
 double sx, sy, rx[40], ry[40], bx[40], by[40], g[40][40];
 int test[40], ans[40];
@@ -33,7 +30,7 @@ inline std::vector<int> calculate_path(const int *mat1, const int *mat2)
     for (size_t i = 0; i < 36; i++)
     {
         lookup(mat1, mat2, i, rx[i], ry[i]);
-        lookup(mat1, mat2, ::pair(i), bx[i], by[i]);
+        lookup(mat1, mat2, pair(i), bx[i], by[i]);
     }
 
     for (int i = 0; i < 36; i++)
